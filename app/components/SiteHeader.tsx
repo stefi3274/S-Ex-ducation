@@ -5,7 +5,7 @@ export default function SiteHeader() {
     <header className="site-header">
       <Link href="/" className="logo">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.svg" alt="" width={36} height={36} />
+        <img src="/logo.png" alt="" width={36} height={36} />
         S-Ex<span>-ducation</span>
       </Link>
       <nav className="site-nav">

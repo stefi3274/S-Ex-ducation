@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSupabaseServer } from "@/lib/supabase-server";
-import { ENTREPRISE } from "@/lib/config";
+import { ENTREPRISE, couleurCategorie, nomCategorie } from "@/lib/config";
 import SiteHeader from "./components/SiteHeader";
 import Footer from "./components/Footer";
 import NewsletterForm from "./components/NewsletterForm";
@@ -12,6 +12,7 @@ type PostAvecPremiereSlide = {
   titre: string;
   slug: string;
   created_at: string;
+  categorie: string | null;
   slides: { image_url: string | null }[];
 };
 
@@ -20,7 +21,9 @@ async function getPosts() {
 
   const { data } = await supabase
     .from("posts")
-    .select("id, titre, slug, created_at, slides(image_url, position)")
+    .select(
+      "id, titre, slug, created_at, categorie, slides(image_url, position)"
+    )
     .eq("entreprise", ENTREPRISE)
     .eq("statut", "publie")
     .order("created_at", { ascending: false });
@@ -78,7 +81,10 @@ export default async function Home() {
                 href={`/post/${post.slug}`}
                 className="post-card"
               >
-                <div className="thumb">
+                <div
+                  className="thumb"
+                  style={{ background: couleurCategorie(post.categorie) }}
+                >
                   {intro?.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={intro.image_url} alt={post.titre} />
@@ -87,6 +93,14 @@ export default async function Home() {
                   )}
                 </div>
                 <div className="card-body">
+                  {nomCategorie(post.categorie) && (
+                    <span
+                      className="badge-categorie"
+                      style={{ background: couleurCategorie(post.categorie) }}
+                    >
+                      {nomCategorie(post.categorie)}
+                    </span>
+                  )}
                   <h3>{post.titre}</h3>
                 </div>
               </Link>

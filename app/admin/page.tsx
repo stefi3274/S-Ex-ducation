@@ -4,10 +4,17 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
-import { ENTREPRISE, SLIDE_LABELS, SLIDE_POSITIONS } from "@/lib/config";
+import {
+  ENTREPRISE,
+  SLIDE_LABELS,
+  SLIDE_POSITIONS,
+  CATEGORIES,
+} from "@/lib/config";
 import { slugify } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
+
+type TypePost = "carousel" | "post";
 
 type Post = {
   id: string;
@@ -15,6 +22,8 @@ type Post = {
   slug: string;
   statut: "brouillon" | "publie";
   created_at: string;
+  categorie: string | null;
+  type: TypePost;
   sponsor_nom: string | null;
   sponsor_logo_url: string | null;
   sponsor_lien: string | null;
@@ -35,6 +44,22 @@ type SlideDraft = {
   file: File | null;
 };
 
+type Contact = {
+  id: string;
+  nom: string | null;
+  email: string;
+  message: string;
+  created_at: string;
+  traite: boolean;
+};
+
+type Stats = {
+  publies: number;
+  brouillons: number;
+  abonnes: number;
+  messagesNonTraites: number;
+};
+
 function slideDraftVide(): SlideDraft {
   return { titre: "", texte: "", file: null };
 }
@@ -46,8 +71,17 @@ export default function AdminDashboard() {
   const [session, setSession] = useState<Session | null | undefined>(
     undefined
   );
+
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [voirContactsTraites, setVoirContactsTraites] = useState(false);
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [nouveauTitre, setNouveauTitre] = useState("");
+  const [nouvelleCategorie, setNouvelleCategorie] = useState(
+    CATEGORIES[0].slug
+  );
+  const [nouveauType, setNouveauType] = useState<TypePost>("carousel");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,21 +91,68 @@ export default function AdminDashboard() {
     Object.fromEntries(SLIDE_POSITIONS.map((p) => [p, slideDraftVide()]))
   );
   const [savingPosition, setSavingPosition] = useState<number | null>(null);
+  const [texteColle, setTexteColle] = useState("");
+  const [enregistrementGroupe, setEnregistrementGroupe] = useState(false);
 
   const [sponsorNom, setSponsorNom] = useState("");
   const [sponsorLien, setSponsorLien] = useState("");
   const [sponsorFile, setSponsorFile] = useState<File | null>(null);
   const [sponsorSaving, setSponsorSaving] = useState(false);
 
+  const positionsActives =
+    selectedPost?.type === "post" ? [0] : SLIDE_POSITIONS;
+
   const loadPosts = useCallback(async () => {
     const { data } = await supabase
       .from("posts")
       .select(
-        "id, titre, slug, statut, created_at, sponsor_nom, sponsor_logo_url, sponsor_lien"
+        "id, titre, slug, statut, created_at, categorie, type, sponsor_nom, sponsor_logo_url, sponsor_lien"
       )
       .eq("entreprise", ENTREPRISE)
       .order("created_at", { ascending: false });
     setPosts((data as Post[]) ?? []);
+  }, [supabase]);
+
+  const loadContacts = useCallback(async () => {
+    const { data } = await supabase
+      .from("contacts")
+      .select("id, nom, email, message, created_at, traite")
+      .eq("entreprise", ENTREPRISE)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    setContacts((data as Contact[]) ?? []);
+  }, [supabase]);
+
+  const loadStats = useCallback(async () => {
+    const [publies, brouillons, abonnes, messagesNonTraites] =
+      await Promise.all([
+        supabase
+          .from("posts")
+          .select("id", { count: "exact", head: true })
+          .eq("entreprise", ENTREPRISE)
+          .eq("statut", "publie"),
+        supabase
+          .from("posts")
+          .select("id", { count: "exact", head: true })
+          .eq("entreprise", ENTREPRISE)
+          .eq("statut", "brouillon"),
+        supabase
+          .from("abonnes")
+          .select("id", { count: "exact", head: true })
+          .eq("entreprise", ENTREPRISE),
+        supabase
+          .from("contacts")
+          .select("id", { count: "exact", head: true })
+          .eq("entreprise", ENTREPRISE)
+          .eq("traite", false),
+      ]);
+
+    setStats({
+      publies: publies.count ?? 0,
+      brouillons: brouillons.count ?? 0,
+      abonnes: abonnes.count ?? 0,
+      messagesNonTraites: messagesNonTraites.count ?? 0,
+    });
   }, [supabase]);
 
   useEffect(() => {
@@ -82,8 +163,10 @@ export default function AdminDashboard() {
       }
       setSession(data.session);
       loadPosts();
+      loadContacts();
+      loadStats();
     });
-  }, [router, loadPosts, supabase]);
+  }, [router, loadPosts, loadContacts, loadStats, supabase]);
 
   async function handleCreatePost(e: React.FormEvent) {
     e.preventDefault();
@@ -100,14 +183,19 @@ export default function AdminDashboard() {
         titre: nouveauTitre.trim(),
         slug,
         statut: "brouillon",
+        categorie: nouvelleCategorie,
+        type: nouveauType,
       });
 
       if (insertError) throw insertError;
 
       setNouveauTitre("");
       await loadPosts();
+      await loadStats();
     } catch (err) {
-      setError("Impossible de créer le post. Le titre donne peut-être un slug déjà utilisé.");
+      setError(
+        "Impossible de créer le post. Le titre donne peut-être un slug déjà utilisé."
+      );
     } finally {
       setCreating(false);
     }
@@ -118,6 +206,8 @@ export default function AdminDashboard() {
     setSponsorNom(post.sponsor_nom ?? "");
     setSponsorLien(post.sponsor_lien ?? "");
     setSponsorFile(null);
+    setTexteColle("");
+
     const { data } = await supabase
       .from("slides")
       .select("id, post_id, position, titre, texte, image_url")
@@ -142,7 +232,10 @@ export default function AdminDashboard() {
   }
 
   function updateDraft(position: number, patch: Partial<SlideDraft>) {
-    setDrafts((prev) => ({ ...prev, [position]: { ...prev[position], ...patch } }));
+    setDrafts((prev) => ({
+      ...prev,
+      [position]: { ...prev[position], ...patch },
+    }));
   }
 
   async function handleSaveSlide(position: number) {
@@ -167,27 +260,65 @@ export default function AdminDashboard() {
         image_url = data.publicUrl;
       }
 
-      const { error: upsertError } = await supabase
-        .from("slides")
-        .upsert(
-          {
-            post_id: selectedPost.id,
-            position,
-            titre: draft.titre || null,
-            texte: draft.texte || null,
-            image_url,
-          },
-          { onConflict: "post_id,position" }
-        );
+      const { error: upsertError } = await supabase.from("slides").upsert(
+        {
+          post_id: selectedPost.id,
+          position,
+          titre: draft.titre || null,
+          texte: draft.texte || null,
+          image_url,
+        },
+        { onConflict: "post_id,position" }
+      );
 
       if (upsertError) throw upsertError;
 
       await loadSlides(selectedPost);
     } catch (err) {
-      setError(`Impossible d'enregistrer le slide "${SLIDE_LABELS[position]}". Réessaie.`);
+      setError(
+        `Impossible d'enregistrer le slide "${SLIDE_LABELS[position]}". Réessaie.`
+      );
     } finally {
       setSavingPosition(null);
     }
+  }
+
+  function handleGenererSlides() {
+    const blocs = texteColle
+      .split(/\n-{3,}\n/)
+      .map((bloc) => bloc.trim())
+      .filter(Boolean);
+
+    setDrafts((prev) => {
+      const copie = { ...prev };
+      positionsActives.forEach((position, index) => {
+        const bloc = blocs[index];
+        if (!bloc) return;
+        const lignes = bloc.split("\n");
+        const titre = lignes[0]?.trim() ?? "";
+        const texte = lignes.slice(1).join("\n").trim();
+        copie[position] = { ...copie[position], titre, texte };
+      });
+      return copie;
+    });
+  }
+
+  async function handleEnregistrerTousLesTextes() {
+    setEnregistrementGroupe(true);
+    for (const position of positionsActives) {
+      await handleSaveSlide(position);
+    }
+    setEnregistrementGroupe(false);
+  }
+
+  async function handleChangerCategorie(categorie: string) {
+    if (!selectedPost) return;
+    await supabase
+      .from("posts")
+      .update({ categorie })
+      .eq("id", selectedPost.id);
+    setSelectedPost({ ...selectedPost, categorie });
+    await loadPosts();
   }
 
   async function handleSaveSponsor() {
@@ -237,11 +368,35 @@ export default function AdminDashboard() {
   }
 
   async function handleTogglePublish(post: Post) {
+    setError(null);
     const nouveauStatut = post.statut === "publie" ? "brouillon" : "publie";
-    await supabase.from("posts").update({ statut: nouveauStatut }).eq("id", post.id);
+
+    const { data, error: updateError } = await supabase
+      .from("posts")
+      .update({ statut: nouveauStatut })
+      .eq("id", post.id)
+      .select("id, statut");
+
+    if (updateError) {
+      setError(
+        `Impossible de ${
+          nouveauStatut === "publie" ? "publier" : "dépublier"
+        } "${post.titre}" : ${updateError.message}`
+      );
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setError(
+        `Le changement n'a pas été enregistré pour "${post.titre}". Vérifie que ton compte admin est bien rattaché à l'entreprise "${ENTREPRISE}" dans la table admins.`
+      );
+      return;
+    }
+
     await loadPosts();
+    await loadStats();
     if (selectedPost?.id === post.id) {
-      setSelectedPost({ ...post, statut: nouveauStatut });
+      setSelectedPost({ ...selectedPost, statut: nouveauStatut });
     }
   }
 
@@ -251,6 +406,22 @@ export default function AdminDashboard() {
       setSelectedPost(null);
     }
     await loadPosts();
+    await loadStats();
+  }
+
+  async function handleToggleContactTraite(contact: Contact) {
+    await supabase
+      .from("contacts")
+      .update({ traite: !contact.traite })
+      .eq("id", contact.id);
+    await loadContacts();
+    await loadStats();
+  }
+
+  async function handleDeleteContact(contact: Contact) {
+    await supabase.from("contacts").delete().eq("id", contact.id);
+    await loadContacts();
+    await loadStats();
   }
 
   async function handleLogout() {
@@ -259,6 +430,10 @@ export default function AdminDashboard() {
   }
 
   if (session === undefined) return null;
+
+  const contactsAffiches = contacts.filter(
+    (c) => voirContactsTraites || !c.traite
+  );
 
   return (
     <>
@@ -270,46 +445,118 @@ export default function AdminDashboard() {
       </div>
 
       <main className="wrap">
-        <h1>Nouveau post</h1>
-        <form onSubmit={handleCreatePost} className="admin-form">
-          <label>Titre du post</label>
-          <input
-            type="text"
-            value={nouveauTitre}
-            onChange={(e) => setNouveauTitre(e.target.value)}
-            placeholder="Ex. Le consentement, ça veut dire quoi ?"
-            required
-          />
-          {error && <p className="admin-error">{error}</p>}
-          <button type="submit" className="btn btn-primary" disabled={creating}>
-            {creating ? "Création..." : "Créer le post"}
-          </button>
-        </form>
+        <h1>Tableau de bord</h1>
+        <div className="stats-grid">
+          <div className="stat-card">
+            <span className="stat-nombre">{stats?.publies ?? "…"}</span>
+            <span className="stat-label">Posts publiés</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-nombre">{stats?.brouillons ?? "…"}</span>
+            <span className="stat-label">Brouillons</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-nombre">{stats?.abonnes ?? "…"}</span>
+            <span className="stat-label">Abonnés newsletter</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-nombre">
+              {stats?.messagesNonTraites ?? "…"}
+            </span>
+            <span className="stat-label">Messages à traiter</span>
+          </div>
+        </div>
+
+        <div className="admin-section">
+          <h2>Nouveau post</h2>
+          <form onSubmit={handleCreatePost} className="admin-form">
+            <label>Titre du post</label>
+            <input
+              type="text"
+              value={nouveauTitre}
+              onChange={(e) => setNouveauTitre(e.target.value)}
+              placeholder="Ex. Le consentement, ça veut dire quoi ?"
+              required
+            />
+            <label>Catégorie</label>
+            <select
+              value={nouvelleCategorie}
+              onChange={(e) => setNouvelleCategorie(e.target.value)}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.nom}
+                </option>
+              ))}
+            </select>
+            <label>Format</label>
+            <select
+              value={nouveauType}
+              onChange={(e) => setNouveauType(e.target.value as TypePost)}
+            >
+              <option value="carousel">Carousel complet (6 slides)</option>
+              <option value="post">Post simple (1 slide)</option>
+            </select>
+            {error && <p className="admin-error">{error}</p>}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={creating}
+            >
+              {creating ? "Création..." : "Créer le post"}
+            </button>
+          </form>
+        </div>
 
         <div className="admin-section">
           <h2>Tous les posts</h2>
           <div className="post-list">
-            {posts.map((post) => (
-              <div key={post.id} className="post-row">
-                <div>
-                  <div className="titre">{post.titre}</div>
-                  <span className={`badge ${post.statut}`}>
-                    {post.statut === "publie" ? "Publié" : "Brouillon"}
-                  </span>
+            {posts.map((post) => {
+              const categorie = CATEGORIES.find(
+                (c) => c.slug === post.categorie
+              );
+              return (
+                <div key={post.id} className="post-row">
+                  <div>
+                    <div className="titre">{post.titre}</div>
+                    <span className={`badge ${post.statut}`}>
+                      {post.statut === "publie" ? "Publié" : "Brouillon"}
+                    </span>{" "}
+                    <span className="badge badge-type">
+                      {post.type === "post" ? "Post simple" : "Carousel"}
+                    </span>{" "}
+                    {categorie && (
+                      <span
+                        className="badge-categorie"
+                        style={{ background: categorie.couleur }}
+                      >
+                        {categorie.nom}
+                      </span>
+                    )}
+                  </div>
+                  <div className="row-actions">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => loadSlides(post)}
+                    >
+                      Modifier les slides
+                    </button>
+                    <button
+                      className="btn btn-noir"
+                      onClick={() => handleTogglePublish(post)}
+                    >
+                      {post.statut === "publie" ? "Dépublier" : "Publier"}
+                    </button>
+                    <button
+                      className="btn btn-outline"
+                      onClick={() => handleDeletePost(post)}
+                    >
+                      Supprimer
+                    </button>
+                  </div>
                 </div>
-                <div className="row-actions">
-                  <button className="btn btn-secondary" onClick={() => loadSlides(post)}>
-                    Modifier les slides
-                  </button>
-                  <button className="btn btn-noir" onClick={() => handleTogglePublish(post)}>
-                    {post.statut === "publie" ? "Dépublier" : "Publier"}
-                  </button>
-                  <button className="btn btn-outline" onClick={() => handleDeletePost(post)}>
-                    Supprimer
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {posts.length === 0 && <p>Aucun post pour l&apos;instant.</p>}
           </div>
         </div>
@@ -317,21 +564,80 @@ export default function AdminDashboard() {
         {selectedPost && (
           <div className="admin-section">
             <h2>Slides — {selectedPost.titre}</h2>
-            <p>Format carré 1080×1080. 1 intro, 4 slides de contenu, 1 conclusion.</p>
+            <p>
+              {selectedPost.type === "post"
+                ? "Post simple : un seul slide."
+                : "Carousel complet : 1 intro, 4 slides de contenu, 1 conclusion."}{" "}
+              Format carré 1080×1080.
+            </p>
+
+            <div className="admin-form" style={{ maxWidth: 320 }}>
+              <label>Catégorie de ce post</label>
+              <select
+                value={selectedPost.categorie ?? CATEGORIES[0].slug}
+                onChange={(e) => handleChangerCategorie(e.target.value)}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c.slug} value={c.slug}>
+                    {c.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="generateur-texte">
+              <label>
+                Coller un texte pour générer les slides automatiquement
+              </label>
+              <p className="aide-texte">
+                Sépare chaque slide par une ligne de tirets (---). Première
+                ligne du bloc = titre, le reste = texte.
+              </p>
+              <textarea
+                value={texteColle}
+                onChange={(e) => setTexteColle(e.target.value)}
+                placeholder={
+                  "Titre de l'intro\nTexte de l'intro\n---\nTitre du sujet 1\nTexte du sujet 1"
+                }
+              />
+              <div className="row-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleGenererSlides}
+                >
+                  Générer les slides
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={enregistrementGroupe}
+                  onClick={handleEnregistrerTousLesTextes}
+                >
+                  {enregistrementGroupe
+                    ? "Enregistrement..."
+                    : "Enregistrer tous les textes"}
+                </button>
+              </div>
+            </div>
 
             <div className="slide-editor-grid">
-              {SLIDE_POSITIONS.map((position) => {
+              {positionsActives.map((position) => {
                 const draft = drafts[position];
                 const existant = slides[position];
+                const label =
+                  selectedPost.type === "post"
+                    ? "Contenu du post"
+                    : SLIDE_LABELS[position];
                 return (
                   <div key={position} className="slide-editor-card">
-                    <h4>{SLIDE_LABELS[position]}</h4>
+                    <h4>{label}</h4>
 
                     {existant?.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={existant.image_url}
-                        alt={SLIDE_LABELS[position]}
+                        alt={label}
                         className="preview"
                       />
                     )}
@@ -424,6 +730,51 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        <div className="admin-section">
+          <h2>Messages de contact</h2>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={voirContactsTraites}
+              onChange={(e) => setVoirContactsTraites(e.target.checked)}
+            />{" "}
+            Afficher aussi les messages traités
+          </label>
+
+          <div className="post-list">
+            {contactsAffiches.map((contact) => (
+              <div key={contact.id} className="post-row contact-row">
+                <div>
+                  <div className="titre">
+                    {contact.nom || "Sans nom"} — {contact.email}
+                  </div>
+                  <p className="contact-message">{contact.message}</p>
+                  <span className={`badge ${contact.traite ? "publie" : "brouillon"}`}>
+                    {contact.traite ? "Traité" : "À traiter"}
+                  </span>
+                </div>
+                <div className="row-actions">
+                  <button
+                    className="btn btn-noir"
+                    onClick={() => handleToggleContactTraite(contact)}
+                  >
+                    {contact.traite ? "Marquer à traiter" : "Marquer traité"}
+                  </button>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => handleDeleteContact(contact)}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            ))}
+            {contactsAffiches.length === 0 && (
+              <p>Aucun message pour l&apos;instant.</p>
+            )}
+          </div>
+        </div>
       </main>
     </>
   );

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSupabaseServer } from "@/lib/supabase-server";
-import { ENTREPRISE } from "@/lib/config";
+import { ENTREPRISE, couleurCategorie, nomCategorie } from "@/lib/config";
 import SiteHeader from "../../components/SiteHeader";
 import Footer from "../../components/Footer";
 import ShareButtons from "../../components/ShareButtons";
@@ -22,7 +22,7 @@ async function getPost(slug: string) {
   const { data: post } = await supabase
     .from("posts")
     .select(
-      "id, titre, slug, statut, sponsor_nom, sponsor_logo_url, sponsor_lien"
+      "id, titre, slug, statut, categorie, sponsor_nom, sponsor_logo_url, sponsor_lien"
     )
     .eq("entreprise", ENTREPRISE)
     .eq("slug", slug)
@@ -40,12 +40,6 @@ async function getPost(slug: string) {
   return { post, slides: (slides as Slide[]) ?? [] };
 }
 
-function slideClass(position: number) {
-  if (position === 0) return "slide";
-  if (position === 5) return "slide noir";
-  return position % 2 === 0 ? "slide turquoise" : "slide";
-}
-
 export default async function PostPage({
   params,
 }: {
@@ -56,6 +50,8 @@ export default async function PostPage({
   if (!data) notFound();
 
   const { post, slides } = data;
+  const couleur = couleurCategorie(post.categorie);
+  const categorie = nomCategorie(post.categorie);
 
   return (
     <>
@@ -64,11 +60,23 @@ export default async function PostPage({
         <a href="/" className="back-link">
           ← Retour
         </a>
+        {categorie && (
+          <span
+            className="badge-categorie"
+            style={{ background: couleur }}
+          >
+            {categorie}
+          </span>
+        )}
         <h1>{post.titre}</h1>
 
         <div className="carousel">
           {slides.map((slide) => (
-            <div key={slide.id} className={slideClass(slide.position)}>
+            <div
+              key={slide.id}
+              className="slide"
+              style={{ background: couleur }}
+            >
               {slide.image_url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -90,11 +98,13 @@ export default async function PostPage({
           ))}
         </div>
 
-        <div className="carousel-dots">
-          {slides.map((slide) => (
-            <span key={slide.id} />
-          ))}
-        </div>
+        {slides.length > 1 && (
+          <div className="carousel-dots">
+            {slides.map((slide) => (
+              <span key={slide.id} />
+            ))}
+          </div>
+        )}
 
         <ShareButtons titre={post.titre} />
 

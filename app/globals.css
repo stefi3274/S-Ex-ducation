@@ -412,6 +412,16 @@ a {
   margin: 0;
 }
 
+.badge-categorie {
+  display: inline-block;
+  color: var(--blanc);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
 .empty-state {
   color: var(--gris-texte);
   margin-top: 40px;
@@ -615,6 +625,81 @@ a {
 .admin-error {
   color: var(--rose-dark);
   font-size: 14px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  margin: 20px 0 8px;
+}
+
+.stat-card {
+  background: var(--gris-clair);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-nombre {
+  font-family: var(--font-display);
+  font-size: 32px;
+  color: var(--rose);
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--gris-texte);
+}
+
+.badge-type {
+  background: var(--gris-texte);
+  color: var(--blanc);
+}
+
+.generateur-texte {
+  margin: 20px 0;
+  padding: 16px;
+  background: var(--gris-clair);
+  border-radius: 14px;
+}
+
+.generateur-texte textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 10px 12px;
+  border: 2px solid var(--blanc);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  margin: 8px 0 12px;
+}
+
+.aide-texte {
+  font-size: 13px;
+  color: var(--gris-texte);
+  margin: 4px 0 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin: 12px 0;
+}
+
+.contact-row {
+  align-items: flex-start;
+}
+
+.contact-message {
+  color: var(--gris-texte);
+  font-size: 14px;
+  margin: 6px 0;
+  max-width: 480px;
 }
 
 .post-list {

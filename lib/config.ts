@@ -12,3 +12,23 @@ export const SLIDE_LABELS: Record<number, string> = {
 };
 
 export const SLIDE_POSITIONS = [0, 1, 2, 3, 4, 5];
+
+export type Categorie = {
+  slug: string;
+  nom: string;
+  couleur: string;
+};
+
+export const CATEGORIES: Categorie[] = [
+  { slug: "je-minforme", nom: "Je m'informe", couleur: "#14b8a6" },
+  { slug: "mythe-realite", nom: "Mythe et réalité", couleur: "#c2185b" },
+  { slug: "societe", nom: "Société", couleur: "#111111" },
+];
+
+export function couleurCategorie(slug: string | null | undefined): string {
+  return CATEGORIES.find((c) => c.slug === slug)?.couleur ?? "#c2185b";
+}
+
+export function nomCategorie(slug: string | null | undefined): string | null {
+  return CATEGORIES.find((c) => c.slug === slug)?.nom ?? null;
+}

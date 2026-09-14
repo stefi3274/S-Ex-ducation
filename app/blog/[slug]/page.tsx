@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 type Article = {
   id: string;
   titre: string;
+  sous_titre: string | null;
   slug: string;
   extrait: string | null;
   contenu: string;
@@ -26,7 +27,7 @@ async function getArticle(slug: string) {
   const { data } = await supabase
     .from("blogs")
     .select(
-      "id, titre, slug, extrait, contenu, image_couverture_url, categorie, auteur_nom, created_at"
+      "id, titre, sous_titre, slug, extrait, contenu, image_couverture_url, categorie, auteur_nom, created_at"
     )
     .eq("entreprise", ENTREPRISE)
     .eq("slug", slug)
@@ -76,6 +77,9 @@ export default async function ArticlePage({
         )}
 
         <h1>{article.titre}</h1>
+        {article.sous_titre && (
+          <p className="blog-sous-titre">{article.sous_titre}</p>
+        )}
         <p className="blog-meta">
           {article.auteur_nom && `${article.auteur_nom} · `}
           {formatDate(article.created_at)}

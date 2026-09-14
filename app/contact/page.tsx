@@ -17,6 +17,15 @@ export default function ContactPage() {
           sponsor ? Écris-nous.
         </p>
 
+        <a
+          href="https://wa.me/50955108873"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-whatsapp"
+        >
+          Écrire sur WhatsApp
+        </a>
+
         <ContactForm />
 
         <div className="contact-block">

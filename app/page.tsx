@@ -19,7 +19,7 @@ type PostAvecPremiereSlide = {
 async function getPosts() {
   const supabase = getSupabaseServer();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("posts")
     .select(
       "id, titre, slug, created_at, categorie, slides(image_url, position)"
@@ -27,6 +27,10 @@ async function getPosts() {
     .eq("entreprise", ENTREPRISE)
     .eq("statut", "publie")
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Erreur chargement posts publiés :", error.message);
+  }
 
   return (data as PostAvecPremiereSlide[]) ?? [];
 }

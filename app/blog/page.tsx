@@ -13,6 +13,7 @@ export const metadata = {
 type Article = {
   id: string;
   titre: string;
+  sous_titre: string | null;
   slug: string;
   extrait: string | null;
   image_couverture_url: string | null;
@@ -27,7 +28,7 @@ async function getArticles() {
   const { data } = await supabase
     .from("blogs")
     .select(
-      "id, titre, slug, extrait, image_couverture_url, categorie, auteur_nom, created_at"
+      "id, titre, sous_titre, slug, extrait, image_couverture_url, categorie, auteur_nom, created_at"
     )
     .eq("entreprise", ENTREPRISE)
     .eq("statut", "publie")
@@ -99,6 +100,9 @@ export default async function BlogPage() {
                   </span>
                 )}
                 <h2>{article.titre}</h2>
+                {article.sous_titre && (
+                  <p className="blog-sous-titre">{article.sous_titre}</p>
+                )}
                 {article.extrait && <p>{article.extrait}</p>}
                 <span className="blog-meta">
                   {article.auteur_nom && `${article.auteur_nom} · `}

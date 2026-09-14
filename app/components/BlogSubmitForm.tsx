@@ -7,6 +7,7 @@ import { slugify } from "@/lib/slug";
 
 export default function BlogSubmitForm() {
   const [titre, setTitre] = useState("");
+  const [sousTitre, setSousTitre] = useState("");
   const [extrait, setExtrait] = useState("");
   const [contenu, setContenu] = useState("");
   const [categorie, setCategorie] = useState(CATEGORIES[0].slug);
@@ -41,6 +42,7 @@ export default function BlogSubmitForm() {
       const { error: insertError } = await supabase.from("blogs").insert({
         entreprise: ENTREPRISE,
         titre: titre.trim(),
+        sous_titre: sousTitre || null,
         slug,
         extrait: extrait || null,
         contenu,
@@ -72,12 +74,26 @@ export default function BlogSubmitForm() {
 
   return (
     <form onSubmit={handleSubmit} className="admin-form">
-      <label>Titre</label>
+      <label>Photo de couverture (optionnelle)</label>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+      />
+
+      <label>Titre (obligatoire)</label>
       <input
         type="text"
         value={titre}
         onChange={(e) => setTitre(e.target.value)}
         required
+      />
+
+      <label>Sous-titre (optionnel)</label>
+      <input
+        type="text"
+        value={sousTitre}
+        onChange={(e) => setSousTitre(e.target.value)}
       />
 
       <label>Résumé court (affiché dans la liste)</label>
@@ -107,7 +123,7 @@ export default function BlogSubmitForm() {
         ))}
       </select>
 
-      <label>Ton nom (ou pseudo)</label>
+      <label>Signer avec (nom d&apos;auteur·e ou pseudo)</label>
       <input
         type="text"
         value={auteurNom}
@@ -120,13 +136,6 @@ export default function BlogSubmitForm() {
         value={auteurEmail}
         onChange={(e) => setAuteurEmail(e.target.value)}
         required
-      />
-
-      <label>Image de couverture (optionnelle)</label>
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => setImage(e.target.files?.[0] ?? null)}
       />
 
       {error && <p className="admin-error">{error}</p>}

@@ -14,6 +14,7 @@ type Statut = "soumis" | "a_revoir" | "rejete" | "publie";
 type Article = {
   id: string;
   titre: string;
+  sous_titre: string | null;
   slug: string;
   extrait: string | null;
   contenu: string;
@@ -48,6 +49,7 @@ export default function AdminBlogs() {
   const [actionEnCours, setActionEnCours] = useState(false);
 
   const [titre, setTitre] = useState("");
+  const [sousTitre, setSousTitre] = useState("");
   const [extrait, setExtrait] = useState("");
   const [contenu, setContenu] = useState("");
   const [categorie, setCategorie] = useState(CATEGORIES[0].slug);
@@ -60,7 +62,7 @@ export default function AdminBlogs() {
     const { data } = await supabase
       .from("blogs")
       .select(
-        "id, titre, slug, extrait, contenu, image_couverture_url, categorie, auteur_nom, auteur_email, statut, commentaire_admin, created_at"
+        "id, titre, sous_titre, slug, extrait, contenu, image_couverture_url, categorie, auteur_nom, auteur_email, statut, commentaire_admin, created_at"
       )
       .eq("entreprise", ENTREPRISE)
       .order("created_at", { ascending: false });
@@ -101,6 +103,7 @@ export default function AdminBlogs() {
       const { error: insertError } = await supabase.from("blogs").insert({
         entreprise: ENTREPRISE,
         titre: titre.trim(),
+        sous_titre: sousTitre || null,
         slug,
         extrait: extrait || null,
         contenu,
@@ -113,13 +116,17 @@ export default function AdminBlogs() {
       if (insertError) throw insertError;
 
       setTitre("");
+      setSousTitre("");
       setExtrait("");
       setContenu("");
       setAuteurNom("");
       setImage(null);
       await loadArticles();
     } catch (err) {
-      setError("Impossible de créer l'article. Réessaie.");
+      const message = err instanceof Error ? err.message : "";
+      setError(
+        `Impossible de créer l'article.${message ? ` (${message})` : ""}`
+      );
     } finally {
       setCreating(false);
     }
@@ -179,13 +186,28 @@ export default function AdminBlogs() {
         <div className="admin-section">
           <h2>Écrire un article (publié immédiatement)</h2>
           <form onSubmit={handleCreerArticle} className="admin-form">
-            <label>Titre</label>
+            <label>Photo de couverture</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+            />
+
+            <label>Titre (obligatoire)</label>
             <input
               type="text"
               value={titre}
               onChange={(e) => setTitre(e.target.value)}
               required
             />
+
+            <label>Sous-titre (optionnel)</label>
+            <input
+              type="text"
+              value={sousTitre}
+              onChange={(e) => setSousTitre(e.target.value)}
+            />
+
             <label>Résumé court</label>
             <textarea
               value={extrait}
@@ -210,18 +232,12 @@ export default function AdminBlogs() {
                 </option>
               ))}
             </select>
-            <label>Auteur</label>
+            <label>Signer avec (nom d&apos;auteur·e)</label>
             <input
               type="text"
               value={auteurNom}
               onChange={(e) => setAuteurNom(e.target.value)}
               placeholder="S-Ex-ducation"
-            />
-            <label>Image de couverture</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImage(e.target.files?.[0] ?? null)}
             />
             {error && <p className="admin-error">{error}</p>}
             <button type="submit" className="btn btn-primary" disabled={creating}>
@@ -249,6 +265,11 @@ export default function AdminBlogs() {
               <div key={article.id} className="post-row contact-row">
                 <div style={{ flex: 1 }}>
                   <div className="titre">{article.titre}</div>
+                  {article.sous_titre && (
+                    <p className="contact-message" style={{ fontStyle: "italic" }}>
+                      {article.sous_titre}
+                    </p>
+                  )}
                   <p className="contact-message">
                     {article.auteur_nom || "Anonyme"}
                     {article.auteur_email ? ` · ${article.auteur_email}` : ""}

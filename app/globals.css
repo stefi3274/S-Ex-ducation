@@ -229,6 +229,13 @@ a {
   color: var(--blanc);
 }
 
+.btn-whatsapp {
+  background: #25d366;
+  color: var(--blanc);
+  display: inline-block;
+  margin-bottom: 20px;
+}
+
 .btn-outline {
   background: transparent;
   color: var(--noir);
@@ -638,6 +645,13 @@ a {
 .blog-meta {
   font-size: 13px;
   color: #999;
+}
+
+.blog-sous-titre {
+  font-size: 17px;
+  color: var(--gris-texte);
+  font-style: italic;
+  margin: 0 0 8px;
 }
 
 @media (max-width: 560px) {

@@ -815,6 +815,35 @@ a {
   font-size: 14px;
 }
 
+.carousel-rapide {
+  margin-top: 24px;
+  padding: 24px;
+  background: var(--noir);
+  color: var(--blanc);
+  border-radius: 20px;
+}
+
+.carousel-rapide h2 {
+  color: var(--blanc);
+  margin-bottom: 4px;
+}
+
+.carousel-rapide p {
+  color: #ccc;
+}
+
+.carousel-rapide .aide-texte {
+  background: transparent;
+  padding: 0;
+  color: #aaa;
+}
+
+.carousel-rapide .admin-form input,
+.carousel-rapide .admin-form select,
+.carousel-rapide .admin-form textarea {
+  border-color: #444;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

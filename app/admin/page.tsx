@@ -90,6 +90,15 @@ function AdminDashboardInner() {
   >([]);
 
   const [posts, setPosts] = useState<Post[]>([]);
+
+  const [titreRapide, setTitreRapide] = useState("");
+  const [categorieRapide, setCategorieRapide] = useState(CATEGORIES[0].slug);
+  const [texteRapide, setTexteRapide] = useState("");
+  const [publierRapide, setPublierRapide] = useState(true);
+  const [creationRapide, setCreationRapide] = useState(false);
+  const [erreurRapide, setErreurRapide] = useState<string | null>(null);
+  const [succesRapide, setSuccesRapide] = useState<string | null>(null);
+
   const [nouveauTitre, setNouveauTitre] = useState("");
   const [nouvelleCategorie, setNouvelleCategorie] = useState(
     CATEGORIES[0].slug
@@ -238,6 +247,84 @@ function AdminDashboardInner() {
       );
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleCreerCarouselRapide(e: React.FormEvent) {
+    e.preventDefault();
+    setErreurRapide(null);
+    setSuccesRapide(null);
+
+    const blocs = texteRapide
+      .split(/\n-{3,}\n/)
+      .map((bloc) => bloc.trim())
+      .filter(Boolean)
+      .slice(0, 12);
+
+    if (blocs.length < 2) {
+      setErreurRapide(
+        "Colle au moins 2 blocs de texte, séparés par une ligne de tirets (---)."
+      );
+      return;
+    }
+
+    const titre =
+      titreRapide.trim() || blocs[0].split("\n")[0].trim().slice(0, 80);
+
+    setCreationRapide(true);
+
+    try {
+      const slug = `${slugify(titre)}-${Date.now().toString().slice(-5)}`;
+
+      const { data: nouveauPost, error: insertError } = await supabase
+        .from("posts")
+        .insert({
+          entreprise: ENTREPRISE,
+          titre,
+          slug,
+          statut: publierRapide ? "publie" : "brouillon",
+          categorie: categorieRapide,
+          type: "carousel",
+          nb_slides: blocs.length,
+        })
+        .select("id, slug")
+        .single();
+
+      if (insertError) throw insertError;
+
+      const slidesAInserer = blocs.map((bloc, position) => {
+        const lignes = bloc.split("\n");
+        return {
+          post_id: nouveauPost.id,
+          position,
+          titre: lignes[0]?.trim() || null,
+          texte: lignes.slice(1).join("\n").trim() || null,
+          image_url: null,
+        };
+      });
+
+      const { error: slidesError } = await supabase
+        .from("slides")
+        .insert(slidesAInserer);
+
+      if (slidesError) throw slidesError;
+
+      setSuccesRapide(
+        publierRapide
+          ? `Carousel publié : /post/${nouveauPost.slug}`
+          : `Carousel créé en brouillon. Publie-le depuis la liste ci-dessous quand tu es prêt·e.`
+      );
+      setTitreRapide("");
+      setTexteRapide("");
+      await loadPosts();
+      await loadStats();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      setErreurRapide(
+        `Impossible de créer le carousel.${message ? ` (${message})` : ""}`
+      );
+    } finally {
+      setCreationRapide(false);
     }
   }
 
@@ -534,6 +621,71 @@ function AdminDashboardInner() {
             </span>
             <span className="stat-label">Messages à traiter</span>
           </div>
+        </div>
+
+        <div className="carousel-rapide">
+          <h2>Carousel rapide</h2>
+          <p>Colle un texte, tu as un carousel. Le plus simple possible.</p>
+
+          <form onSubmit={handleCreerCarouselRapide} className="admin-form">
+            <label>Titre (optionnel — sinon pris sur le premier slide)</label>
+            <input
+              type="text"
+              value={titreRapide}
+              onChange={(e) => setTitreRapide(e.target.value)}
+              placeholder="Ex. Rejoins la communauté"
+            />
+
+            <label>Catégorie</label>
+            <select
+              value={categorieRapide}
+              onChange={(e) => setCategorieRapide(e.target.value)}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.nom}
+                </option>
+              ))}
+            </select>
+
+            <label>Texte du carousel</label>
+            <textarea
+              value={texteRapide}
+              onChange={(e) => setTexteRapide(e.target.value)}
+              style={{ minHeight: 200 }}
+              placeholder={
+                "Titre du slide 1\nTexte du slide 1\n---\nTitre du slide 2\nTexte du slide 2\n---\n..."
+              }
+              required
+            />
+            <p className="aide-texte">
+              Sépare chaque slide par une ligne de tirets (---). Entre 2 et
+              12 blocs. Première ligne de chaque bloc = titre du slide, le
+              reste = texte. Le nombre de slides est déduit automatiquement.
+              Tu pourras ajouter des images ensuite dans &quot;Modifier les
+              slides&quot;.
+            </p>
+
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={publierRapide}
+                onChange={(e) => setPublierRapide(e.target.checked)}
+              />{" "}
+              Publier tout de suite (sinon enregistré en brouillon)
+            </label>
+
+            {erreurRapide && <p className="admin-error">{erreurRapide}</p>}
+            {succesRapide && <p className="form-success">{succesRapide}</p>}
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={creationRapide}
+            >
+              {creationRapide ? "Création..." : "Créer le carousel"}
+            </button>
+          </form>
         </div>
 
         <div className="admin-section">

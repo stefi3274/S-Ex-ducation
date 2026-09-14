@@ -574,12 +574,154 @@ a {
   font-weight: 600;
 }
 
+/* Blog */
+
+.soumettre-bloc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0 30px;
+  padding: 16px 20px;
+  background: var(--gris-clair);
+  border-radius: 14px;
+}
+
+.blog-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.blog-carte {
+  display: flex;
+  gap: 20px;
+  text-decoration: none;
+  color: var(--noir);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--gris-clair);
+}
+
+.blog-carte-image {
+  flex: 0 0 160px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blog-carte-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.blog-carte-texte {
+  padding: 16px 20px 16px 0;
+  flex: 1;
+}
+
+.blog-carte-texte h2 {
+  font-size: 20px;
+  margin: 4px 0 6px;
+}
+
+.blog-carte-texte p {
+  color: var(--gris-texte);
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+.blog-meta {
+  font-size: 13px;
+  color: #999;
+}
+
+@media (max-width: 560px) {
+  .blog-carte {
+    flex-direction: column;
+  }
+  .blog-carte-image {
+    flex: none;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+  .blog-carte-texte {
+    padding: 16px;
+  }
+}
+
+.article-page h1 {
+  margin-top: 12px;
+}
+
+.article-cover {
+  width: 100%;
+  border-radius: 16px;
+  margin: 20px 0;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.article-corps {
+  font-size: 17px;
+  line-height: 1.75;
+  color: #333;
+}
+
+.article-corps p {
+  margin: 0 0 20px;
+  color: #333;
+}
+
+/* Accent dans le texte des slides : exemples, italiques, noms propres */
+
+.accent-texte {
+  color: var(--turquoise);
+  font-style: italic;
+  font-weight: 600;
+}
+
 .admin-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
   background: var(--noir);
+  color: var(--blanc);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-bar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.onglets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+
+.onglet {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--gris-clair);
+  background: var(--blanc);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.onglet.actif {
+  background: var(--rose);
+  border-color: var(--rose);
   color: var(--blanc);
 }
 

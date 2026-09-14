@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import {
   ENTREPRISE,
-  SLIDE_LABELS,
   SLIDE_POSITIONS,
   CATEGORIES,
+  TAILLES_CAROUSEL,
+  positionsPourTaille,
+  labelSlide,
 } from "@/lib/config";
 import { slugify } from "@/lib/slug";
 
@@ -24,6 +26,8 @@ type Post = {
   created_at: string;
   categorie: string | null;
   type: TypePost;
+  nb_slides: number;
+  article_id: string | null;
   sponsor_nom: string | null;
   sponsor_logo_url: string | null;
   sponsor_lien: string | null;
@@ -53,6 +57,11 @@ type Contact = {
   traite: boolean;
 };
 
+type ArticleDispo = {
+  id: string;
+  titre: string;
+};
+
 type Stats = {
   publies: number;
   brouillons: number;
@@ -64,8 +73,9 @@ function slideDraftVide(): SlideDraft {
   return { titre: "", texte: "", file: null };
 }
 
-export default function AdminDashboard() {
+function AdminDashboardInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useMemo(() => getSupabase(), []);
 
   const [session, setSession] = useState<Session | null | undefined>(
@@ -75,6 +85,9 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [voirContactsTraites, setVoirContactsTraites] = useState(false);
+  const [articlesDisponibles, setArticlesDisponibles] = useState<
+    ArticleDispo[]
+  >([]);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [nouveauTitre, setNouveauTitre] = useState("");
@@ -82,6 +95,9 @@ export default function AdminDashboard() {
     CATEGORIES[0].slug
   );
   const [nouveauType, setNouveauType] = useState<TypePost>("carousel");
+  const [nouveauNbSlides, setNouveauNbSlides] = useState(6);
+  const [aUnArticle, setAUnArticle] = useState(false);
+  const [articleSelectionne, setArticleSelectionne] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,17 +116,29 @@ export default function AdminDashboard() {
   const [sponsorSaving, setSponsorSaving] = useState(false);
 
   const positionsActives =
-    selectedPost?.type === "post" ? [0] : SLIDE_POSITIONS;
+    selectedPost?.type === "post"
+      ? [0]
+      : positionsPourTaille(selectedPost?.nb_slides ?? 6);
 
   const loadPosts = useCallback(async () => {
     const { data } = await supabase
       .from("posts")
       .select(
-        "id, titre, slug, statut, created_at, categorie, type, sponsor_nom, sponsor_logo_url, sponsor_lien"
+        "id, titre, slug, statut, created_at, categorie, type, nb_slides, article_id, sponsor_nom, sponsor_logo_url, sponsor_lien"
       )
       .eq("entreprise", ENTREPRISE)
       .order("created_at", { ascending: false });
     setPosts((data as Post[]) ?? []);
+  }, [supabase]);
+
+  const loadArticles = useCallback(async () => {
+    const { data } = await supabase
+      .from("blogs")
+      .select("id, titre")
+      .eq("entreprise", ENTREPRISE)
+      .eq("statut", "publie")
+      .order("created_at", { ascending: false });
+    setArticlesDisponibles((data as ArticleDispo[]) ?? []);
   }, [supabase]);
 
   const loadContacts = useCallback(async () => {
@@ -165,8 +193,16 @@ export default function AdminDashboard() {
       loadPosts();
       loadContacts();
       loadStats();
+      loadArticles();
+
+      const articleDepuisUrl = searchParams.get("article");
+      if (articleDepuisUrl) {
+        setAUnArticle(true);
+        setArticleSelectionne(articleDepuisUrl);
+        setNouveauType("carousel");
+      }
     });
-  }, [router, loadPosts, loadContacts, loadStats, supabase]);
+  }, [router, loadPosts, loadContacts, loadStats, loadArticles, searchParams, supabase]);
 
   async function handleCreatePost(e: React.FormEvent) {
     e.preventDefault();
@@ -185,11 +221,15 @@ export default function AdminDashboard() {
         statut: "brouillon",
         categorie: nouvelleCategorie,
         type: nouveauType,
+        nb_slides: nouveauNbSlides,
+        article_id: aUnArticle && articleSelectionne ? articleSelectionne : null,
       });
 
       if (insertError) throw insertError;
 
       setNouveauTitre("");
+      setAUnArticle(false);
+      setArticleSelectionne("");
       await loadPosts();
       await loadStats();
     } catch (err) {
@@ -208,6 +248,9 @@ export default function AdminDashboard() {
     setSponsorFile(null);
     setTexteColle("");
 
+    const positions =
+      post.type === "post" ? [0] : positionsPourTaille(post.nb_slides ?? 6);
+
     const { data } = await supabase
       .from("slides")
       .select("id, post_id, position, titre, texte, image_url")
@@ -215,7 +258,7 @@ export default function AdminDashboard() {
 
     const parPosition: Record<number, Slide | undefined> = {};
     const nouveauxDrafts: Record<number, SlideDraft> = Object.fromEntries(
-      SLIDE_POSITIONS.map((p) => [p, slideDraftVide()])
+      positions.map((p) => [p, slideDraftVide()])
     );
 
     ((data as Slide[]) ?? []).forEach((slide) => {
@@ -276,7 +319,10 @@ export default function AdminDashboard() {
       await loadSlides(selectedPost);
     } catch (err) {
       setError(
-        `Impossible d'enregistrer le slide "${SLIDE_LABELS[position]}". Réessaie.`
+        `Impossible d'enregistrer le slide "${labelSlide(
+          position,
+          selectedPost.nb_slides ?? 6
+        )}". Réessaie.`
       );
     } finally {
       setSavingPosition(null);
@@ -439,9 +485,14 @@ export default function AdminDashboard() {
     <>
       <div className="admin-bar">
         <span>S-Ex-ducation — Admin</span>
-        <button className="btn btn-outline" onClick={handleLogout}>
-          Déconnexion
-        </button>
+        <div className="admin-bar-actions">
+          <a href="/admin/blogs" className="btn btn-outline">
+            Gérer les blogs
+          </a>
+          <button className="btn btn-outline" onClick={handleLogout}>
+            Déconnexion
+          </button>
+        </div>
       </div>
 
       <main className="wrap">
@@ -494,9 +545,61 @@ export default function AdminDashboard() {
               value={nouveauType}
               onChange={(e) => setNouveauType(e.target.value as TypePost)}
             >
-              <option value="carousel">Carousel complet (6 slides)</option>
+              <option value="carousel">Carousel</option>
               <option value="post">Post simple (1 slide)</option>
             </select>
+
+            {nouveauType === "carousel" && (
+              <>
+                <label>Nombre de slides</label>
+                <select
+                  value={nouveauNbSlides}
+                  onChange={(e) =>
+                    setNouveauNbSlides(Number(e.target.value))
+                  }
+                >
+                  {TAILLES_CAROUSEL.map((n) => (
+                    <option key={n} value={n}>
+                      {n} slides
+                    </option>
+                  ))}
+                </select>
+
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={aUnArticle}
+                    onChange={(e) => setAUnArticle(e.target.checked)}
+                  />{" "}
+                  Ce carousel a un article de blog associé ?
+                </label>
+
+                {aUnArticle && (
+                  <>
+                    <label>Article lié</label>
+                    <select
+                      value={articleSelectionne}
+                      onChange={(e) => setArticleSelectionne(e.target.value)}
+                      required
+                    >
+                      <option value="">Choisir un article publié...</option>
+                      {articlesDisponibles.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.titre}
+                        </option>
+                      ))}
+                    </select>
+                    {articlesDisponibles.length === 0 && (
+                      <p className="aide-texte">
+                        Aucun article publié pour l&apos;instant. Publie
+                        d&apos;abord un article dans Gérer les blogs.
+                      </p>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
             {error && <p className="admin-error">{error}</p>}
             <button
               type="submit"
@@ -523,8 +626,13 @@ export default function AdminDashboard() {
                       {post.statut === "publie" ? "Publié" : "Brouillon"}
                     </span>{" "}
                     <span className="badge badge-type">
-                      {post.type === "post" ? "Post simple" : "Carousel"}
+                      {post.type === "post"
+                        ? "Post simple"
+                        : `Carousel ${post.nb_slides ?? 6}`}
                     </span>{" "}
+                    {post.article_id && (
+                      <span className="badge badge-type">Lié à un article</span>
+                    )}{" "}
                     {categorie && (
                       <span
                         className="badge-categorie"
@@ -567,7 +675,7 @@ export default function AdminDashboard() {
             <p>
               {selectedPost.type === "post"
                 ? "Post simple : un seul slide."
-                : "Carousel complet : 1 intro, 4 slides de contenu, 1 conclusion."}{" "}
+                : `Carousel de ${selectedPost.nb_slides ?? 6} slides : intro, slides de contenu, puis outro.`}{" "}
               Format carré 1080×1080.
             </p>
 
@@ -591,7 +699,9 @@ export default function AdminDashboard() {
               </label>
               <p className="aide-texte">
                 Sépare chaque slide par une ligne de tirets (---). Première
-                ligne du bloc = titre, le reste = texte.
+                ligne du bloc = titre, le reste = texte. Entoure un exemple,
+                un mot en italique ou un nom de personnalité d&apos;astérisques
+                (*comme ça*) pour qu&apos;il ressorte en couleur.
               </p>
               <textarea
                 value={texteColle}
@@ -628,7 +738,7 @@ export default function AdminDashboard() {
                 const label =
                   selectedPost.type === "post"
                     ? "Contenu du post"
-                    : SLIDE_LABELS[position];
+                    : labelSlide(position, selectedPost.nb_slides ?? 6);
                 return (
                   <div key={position} className="slide-editor-card">
                     <h4>{label}</h4>
@@ -777,5 +887,13 @@ export default function AdminDashboard() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <Suspense fallback={null}>
+      <AdminDashboardInner />
+    </Suspense>
   );
 }

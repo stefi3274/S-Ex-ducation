@@ -9,6 +9,7 @@ export default function SiteHeader() {
         S-Ex<span>-ducation</span>
       </Link>
       <nav className="site-nav">
+        <Link href="/blog">Blog</Link>
         <Link href="/a-propos">À propos</Link>
         <Link href="/contact">Contact</Link>
       </nav>

@@ -13,6 +13,25 @@ export const SLIDE_LABELS: Record<number, string> = {
 
 export const SLIDE_POSITIONS = [0, 1, 2, 3, 4, 5];
 
+export const TAILLES_CAROUSEL = [6, 8, 10, 12];
+
+export function positionsPourTaille(nbSlides: number): number[] {
+  return Array.from({ length: nbSlides }, (_, i) => i);
+}
+
+export function labelSlide(position: number, nbSlides: number): string {
+  if (position === 0) return "Intro";
+  if (position === nbSlides - 1) return "Outro (invitation)";
+  return `Sujet ${position}`;
+}
+
+export const BLOG_STATUTS: Record<string, string> = {
+  soumis: "Soumis",
+  a_revoir: "À revoir",
+  rejete: "Rejeté",
+  publie: "Publié",
+};
+
 export type Categorie = {
   slug: string;
   nom: string;

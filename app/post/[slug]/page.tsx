@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { ENTREPRISE, couleurCategorie, nomCategorie } from "@/lib/config";
+import { texteAvecAccents } from "@/lib/texte";
 import SiteHeader from "../../components/SiteHeader";
 import Footer from "../../components/Footer";
 import ShareButtons from "../../components/ShareButtons";
@@ -16,13 +18,18 @@ type Slide = {
   image_url: string | null;
 };
 
+type Article = {
+  titre: string;
+  slug: string;
+};
+
 async function getPost(slug: string) {
   const supabase = getSupabaseServer();
 
   const { data: post } = await supabase
     .from("posts")
     .select(
-      "id, titre, slug, statut, categorie, sponsor_nom, sponsor_logo_url, sponsor_lien"
+      "id, titre, slug, statut, categorie, article_id, sponsor_nom, sponsor_logo_url, sponsor_lien"
     )
     .eq("entreprise", ENTREPRISE)
     .eq("slug", slug)
@@ -37,7 +44,18 @@ async function getPost(slug: string) {
     .eq("post_id", post.id)
     .order("position", { ascending: true });
 
-  return { post, slides: (slides as Slide[]) ?? [] };
+  let article: Article | null = null;
+  if (post.article_id) {
+    const { data: articleData } = await supabase
+      .from("blogs")
+      .select("titre, slug")
+      .eq("id", post.article_id)
+      .eq("statut", "publie")
+      .maybeSingle();
+    article = (articleData as Article) ?? null;
+  }
+
+  return { post, slides: (slides as Slide[]) ?? [], article };
 }
 
 export default async function PostPage({
@@ -49,9 +67,10 @@ export default async function PostPage({
 
   if (!data) notFound();
 
-  const { post, slides } = data;
+  const { post, slides, article } = data;
   const couleur = couleurCategorie(post.categorie);
   const categorie = nomCategorie(post.categorie);
+  const derniereePosition = slides.length - 1;
 
   return (
     <>
@@ -71,7 +90,7 @@ export default async function PostPage({
         <h1>{post.titre}</h1>
 
         <div className="carousel">
-          {slides.map((slide) => (
+          {slides.map((slide, index) => (
             <div
               key={slide.id}
               className="slide"
@@ -87,10 +106,12 @@ export default async function PostPage({
               )}
               <div className="slide-overlay">
                 {slide.titre && <h2>{slide.titre}</h2>}
-                {slide.texte && <p>{slide.texte}</p>}
-                {slide.position === 5 && (
+                {slide.texte && <p>{texteAvecAccents(slide.texte)}</p>}
+                {index === derniereePosition && slides.length > 1 && (
                   <p style={{ marginTop: 16, fontWeight: 600 }}>
-                    Suis S-Ex-ducation pour plus de contenu comme celui-ci.
+                    {article
+                      ? "Lis l'article complet sur le site. Lien en bio."
+                      : "Suis S-Ex-ducation pour plus de contenu comme celui-ci."}
                   </p>
                 )}
               </div>
@@ -107,6 +128,13 @@ export default async function PostPage({
         )}
 
         <ShareButtons titre={post.titre} />
+
+        {article && (
+          <Link href={`/blog/${article.slug}`} className="sponsor-block">
+            <span className="sponsor-label">Article complet</span>
+            <span className="sponsor-nom">{article.titre}</span>
+          </Link>
+        )}
 
         {post.sponsor_nom && (
           <a

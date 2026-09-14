@@ -7,36 +7,47 @@ import NewsletterForm from "./components/NewsletterForm";
 
 export const dynamic = "force-dynamic";
 
-type PostAvecPremiereSlide = {
+type Article = {
   id: string;
   titre: string;
+  sous_titre: string | null;
   slug: string;
-  created_at: string;
+  extrait: string | null;
+  image_couverture_url: string | null;
   categorie: string | null;
-  slides: { image_url: string | null }[];
+  auteur_nom: string | null;
+  created_at: string;
 };
 
-async function getPosts() {
+async function getArticles() {
   const supabase = getSupabaseServer();
 
   const { data, error } = await supabase
-    .from("posts")
+    .from("blogs")
     .select(
-      "id, titre, slug, created_at, categorie, slides(image_url, position)"
+      "id, titre, sous_titre, slug, extrait, image_couverture_url, categorie, auteur_nom, created_at"
     )
     .eq("entreprise", ENTREPRISE)
     .eq("statut", "publie")
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Erreur chargement posts publiés :", error.message);
+    console.error("Erreur chargement articles publiés :", error.message);
   }
 
-  return (data as PostAvecPremiereSlide[]) ?? [];
+  return (data as Article[]) ?? [];
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export default async function Home() {
-  const posts = await getPosts();
+  const articles = await getArticles();
 
   return (
     <>
@@ -59,58 +70,64 @@ export default async function Home() {
             Des réponses claires sur le sexe et les relations, pour les
             jeunes qui n&apos;osent pas demander.
           </p>
-          <a href="#posts" className="btn btn-primary">
-            Voir les derniers posts
-          </a>
         </div>
       </section>
 
-      <div className="wrap">
-        <NewsletterForm />
-      </div>
+      <main className="wrap" id="articles">
+        <div className="section-titre-ligne">
+          <h2>Derniers articles</h2>
+          <Link href="/blog" className="btn btn-secondary">
+            Voir tous les articles
+          </Link>
+        </div>
 
-      <main className="wrap" id="posts">
-        <h2>Derniers posts</h2>
-
-        {posts.length === 0 && (
-          <p className="empty-state">Aucun post publié pour l&apos;instant.</p>
+        {articles.length === 0 && (
+          <p className="empty-state">Aucun article publié pour l&apos;instant.</p>
         )}
 
-        <div className="posts-grid">
-          {posts.map((post) => {
-            const intro = post.slides?.[0];
-            return (
-              <Link
-                key={post.id}
-                href={`/post/${post.slug}`}
-                className="post-card"
+        <div className="blog-liste">
+          {articles.map((article) => (
+            <Link
+              key={article.id}
+              href={`/blog/${article.slug}`}
+              className="blog-carte"
+            >
+              <div
+                className="blog-carte-image"
+                style={{ background: couleurCategorie(article.categorie) }}
               >
-                <div
-                  className="thumb"
-                  style={{ background: couleurCategorie(post.categorie) }}
-                >
-                  {intro?.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={intro.image_url} alt={post.titre} />
-                  ) : (
-                    <div className="thumb-fallback">{post.titre}</div>
-                  )}
-                </div>
-                <div className="card-body">
-                  {nomCategorie(post.categorie) && (
-                    <span
-                      className="badge-categorie"
-                      style={{ background: couleurCategorie(post.categorie) }}
-                    >
-                      {nomCategorie(post.categorie)}
-                    </span>
-                  )}
-                  <h3>{post.titre}</h3>
-                </div>
-              </Link>
-            );
-          })}
+                {article.image_couverture_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={article.image_couverture_url}
+                    alt={article.titre}
+                  />
+                )}
+              </div>
+              <div className="blog-carte-texte">
+                {nomCategorie(article.categorie) && (
+                  <span
+                    className="badge-categorie"
+                    style={{ background: couleurCategorie(article.categorie) }}
+                  >
+                    {nomCategorie(article.categorie)}
+                  </span>
+                )}
+                <h2>{article.titre}</h2>
+                {article.sous_titre && (
+                  <p className="blog-sous-titre">{article.sous_titre}</p>
+                )}
+                {article.extrait && <p>{article.extrait}</p>}
+                <span className="blog-meta">
+                  {article.auteur_nom && `${article.auteur_nom} · `}
+                  {formatDate(article.created_at)}
+                </span>
+              </div>
+            </Link>
+          ))}
         </div>
+
+        <NewsletterForm />
       </main>
       <Footer />
     </>

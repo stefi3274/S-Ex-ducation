@@ -24,7 +24,7 @@ type Article = {
 async function getArticle(slug: string) {
   const supabase = getSupabaseServer();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("blogs")
     .select(
       "id, titre, sous_titre, slug, extrait, contenu, image_couverture_url, categorie, auteur_nom, created_at"
@@ -33,6 +33,10 @@ async function getArticle(slug: string) {
     .eq("slug", slug)
     .eq("statut", "publie")
     .maybeSingle();
+
+  if (error) {
+    console.error("Erreur chargement article :", error.message);
+  }
 
   return data as Article | null;
 }

@@ -447,7 +447,25 @@ function AdminDashboardInner() {
   }
 
   async function handleDeletePost(post: Post) {
-    await supabase.from("posts").delete().eq("id", post.id);
+    setError(null);
+    const { data, error: deleteError } = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", post.id)
+      .select("id");
+
+    if (deleteError) {
+      setError(`Impossible de supprimer "${post.titre}" : ${deleteError.message}`);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setError(
+        `"${post.titre}" n'a pas été supprimé. Vérifie que ton compte admin est bien rattaché à "${ENTREPRISE}".`
+      );
+      return;
+    }
+
     if (selectedPost?.id === post.id) {
       setSelectedPost(null);
     }
@@ -699,9 +717,11 @@ function AdminDashboardInner() {
               </label>
               <p className="aide-texte">
                 Sépare chaque slide par une ligne de tirets (---). Première
-                ligne du bloc = titre, le reste = texte. Entoure un exemple,
-                un mot en italique ou un nom de personnalité d&apos;astérisques
-                (*comme ça*) pour qu&apos;il ressorte en couleur.
+                ligne du bloc = titre, le reste = texte. Les guillemets («
+                » ou &quot; &quot;) ressortent automatiquement en couleur.
+                Entoure un exemple, un mot en italique ou un nom de
+                personnalité d&apos;astérisques (*comme ça*) pour qu&apos;il
+                ressorte aussi.
               </p>
               <textarea
                 value={texteColle}

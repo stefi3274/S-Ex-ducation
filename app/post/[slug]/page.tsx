@@ -94,7 +94,6 @@ export default async function PostPage({
             <div
               key={slide.id}
               className="slide"
-              style={{ background: couleur }}
             >
               {slide.image_url && (
                 // eslint-disable-next-line @next/next/no-img-element

@@ -25,7 +25,7 @@ type Article = {
 async function getArticles() {
   const supabase = getSupabaseServer();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("blogs")
     .select(
       "id, titre, sous_titre, slug, extrait, image_couverture_url, categorie, auteur_nom, created_at"
@@ -33,6 +33,10 @@ async function getArticles() {
     .eq("entreprise", ENTREPRISE)
     .eq("statut", "publie")
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Erreur chargement articles publiés :", error.message);
+  }
 
   return (data as Article[]) ?? [];
 }

@@ -151,7 +151,23 @@ export default function AdminBlogs() {
   }
 
   async function handleSupprimer(article: Article) {
-    await supabase.from("blogs").delete().eq("id", article.id);
+    setError(null);
+    const { data, error: deleteError } = await supabase
+      .from("blogs")
+      .delete()
+      .eq("id", article.id)
+      .select("id");
+
+    if (deleteError) {
+      setError(`Impossible de supprimer "${article.titre}" : ${deleteError.message}`);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setError(`"${article.titre}" n'a pas été supprimé. Réessaie.`);
+      return;
+    }
+
     await loadArticles();
   }
 
@@ -248,6 +264,7 @@ export default function AdminBlogs() {
 
         <div className="admin-section">
           <h2>Articles</h2>
+          {error && <p className="admin-error">{error}</p>}
           <div className="onglets">
             {ONGLETS.map((o) => (
               <button

@@ -20,11 +20,11 @@ const workSans = Work_Sans({
 export const metadata: Metadata = {
   title: "S-Ex-ducation",
   description:
-    "Éducation sexuelle et relationnelle pour la jeunesse haïtienne : contenu, formations, communauté.",
+    "Conseiller, informer et préparer les jeunes, conscient·e·s et préparé·e·s, à une sexualité saine et sans détour.",
   openGraph: {
     title: "S-Ex-ducation",
     description:
-      "Éducation sexuelle et relationnelle pour la jeunesse haïtienne : contenu, formations, communauté.",
+      "Conseiller, informer et préparer les jeunes, conscient·e·s et préparé·e·s, à une sexualité saine et sans détour.",
     locale: "fr_HT",
     type: "website",
   },

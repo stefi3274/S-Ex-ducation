@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { ENTREPRISE } from "@/lib/config";
 import SiteHeader from "./components/SiteHeader";
+import Footer from "./components/Footer";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,32 @@ export default async function Home() {
   return (
     <>
       <SiteHeader />
-      <main className="wrap">
-        <h1>Derniers posts</h1>
-        <p>Éducation sexuelle et relationnelle, sans détour.</p>
+
+      <section className="hero">
+        <div className="hero-blob hero-blob-rose" aria-hidden="true" />
+        <div className="hero-blob hero-blob-turquoise" aria-hidden="true" />
+        <span className="hero-dot hero-dot-1" aria-hidden="true" />
+        <span className="hero-dot hero-dot-2" aria-hidden="true" />
+        <span className="hero-dot hero-dot-3" aria-hidden="true" />
+
+        <div className="wrap hero-content">
+          <h1>
+            Bienvenue,
+            <br />
+            <em>sans tabou.</em>
+          </h1>
+          <p>
+            Des réponses claires sur le sexe et les relations, pour les
+            jeunes qui n&apos;osent pas demander.
+          </p>
+          <a href="#posts" className="btn btn-primary">
+            Voir les derniers posts
+          </a>
+        </div>
+      </section>
+
+      <main className="wrap" id="posts">
+        <h2>Derniers posts</h2>
 
         {posts.length === 0 && (
           <p className="empty-state">Aucun post publié pour l&apos;instant.</p>
@@ -65,6 +89,7 @@ export default async function Home() {
           })}
         </div>
       </main>
+      <Footer />
     </>
   );
 }

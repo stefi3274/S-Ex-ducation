@@ -15,6 +15,9 @@ type Post = {
   slug: string;
   statut: "brouillon" | "publie";
   created_at: string;
+  sponsor_nom: string | null;
+  sponsor_logo_url: string | null;
+  sponsor_lien: string | null;
 };
 
 type Slide = {
@@ -55,10 +58,17 @@ export default function AdminDashboard() {
   );
   const [savingPosition, setSavingPosition] = useState<number | null>(null);
 
+  const [sponsorNom, setSponsorNom] = useState("");
+  const [sponsorLien, setSponsorLien] = useState("");
+  const [sponsorFile, setSponsorFile] = useState<File | null>(null);
+  const [sponsorSaving, setSponsorSaving] = useState(false);
+
   const loadPosts = useCallback(async () => {
     const { data } = await supabase
       .from("posts")
-      .select("id, titre, slug, statut, created_at")
+      .select(
+        "id, titre, slug, statut, created_at, sponsor_nom, sponsor_logo_url, sponsor_lien"
+      )
       .eq("entreprise", ENTREPRISE)
       .order("created_at", { ascending: false });
     setPosts((data as Post[]) ?? []);
@@ -105,6 +115,9 @@ export default function AdminDashboard() {
 
   async function loadSlides(post: Post) {
     setSelectedPost(post);
+    setSponsorNom(post.sponsor_nom ?? "");
+    setSponsorLien(post.sponsor_lien ?? "");
+    setSponsorFile(null);
     const { data } = await supabase
       .from("slides")
       .select("id, post_id, position, titre, texte, image_url")
@@ -174,6 +187,52 @@ export default function AdminDashboard() {
       setError(`Impossible d'enregistrer le slide "${SLIDE_LABELS[position]}". Réessaie.`);
     } finally {
       setSavingPosition(null);
+    }
+  }
+
+  async function handleSaveSponsor() {
+    if (!selectedPost) return;
+    setSponsorSaving(true);
+    setError(null);
+
+    try {
+      let sponsor_logo_url = selectedPost.sponsor_logo_url;
+
+      if (sponsorFile) {
+        const path = `${selectedPost.id}/sponsor-${Date.now()}-${sponsorFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("sexed")
+          .upload(path, sponsorFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage.from("sexed").getPublicUrl(path);
+        sponsor_logo_url = data.publicUrl;
+      }
+
+      const { error: updateError } = await supabase
+        .from("posts")
+        .update({
+          sponsor_nom: sponsorNom || null,
+          sponsor_lien: sponsorLien || null,
+          sponsor_logo_url,
+        })
+        .eq("id", selectedPost.id);
+
+      if (updateError) throw updateError;
+
+      setSponsorFile(null);
+      await loadPosts();
+      setSelectedPost({
+        ...selectedPost,
+        sponsor_nom: sponsorNom || null,
+        sponsor_lien: sponsorLien || null,
+        sponsor_logo_url,
+      });
+    } catch (err) {
+      setError("Impossible d'enregistrer le sponsor. Réessaie.");
+    } finally {
+      setSponsorSaving(false);
     }
   }
 
@@ -316,6 +375,52 @@ export default function AdminDashboard() {
                   </div>
                 );
               })}
+            </div>
+
+            <div className="admin-section">
+              <h3>Sponsor / produit (optionnel)</h3>
+              <p>Affiché sous le carousel sur la page publique du post.</p>
+              <div className="admin-form">
+                {selectedPost.sponsor_logo_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedPost.sponsor_logo_url}
+                    alt="Logo sponsor actuel"
+                    className="preview"
+                    style={{ maxWidth: 160 }}
+                  />
+                )}
+                <label>Nom du sponsor ou du produit</label>
+                <input
+                  type="text"
+                  value={sponsorNom}
+                  onChange={(e) => setSponsorNom(e.target.value)}
+                  placeholder="Ex. Nom de la marque"
+                />
+                <label>Lien (optionnel)</label>
+                <input
+                  type="text"
+                  value={sponsorLien}
+                  onChange={(e) => setSponsorLien(e.target.value)}
+                  placeholder="https://..."
+                />
+                <label>Logo (optionnel)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setSponsorFile(e.target.files?.[0] ?? null)
+                  }
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={sponsorSaving}
+                  onClick={handleSaveSponsor}
+                >
+                  {sponsorSaving ? "Enregistrement..." : "Enregistrer le sponsor"}
+                </button>
+              </div>
             </div>
           </div>
         )}

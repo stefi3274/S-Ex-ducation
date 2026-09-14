@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { ENTREPRISE } from "@/lib/config";
 import SiteHeader from "../../components/SiteHeader";
+import Footer from "../../components/Footer";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,9 @@ async function getPost(slug: string) {
 
   const { data: post } = await supabase
     .from("posts")
-    .select("id, titre, slug, statut")
+    .select(
+      "id, titre, slug, statut, sponsor_nom, sponsor_logo_url, sponsor_lien"
+    )
     .eq("entreprise", ENTREPRISE)
     .eq("slug", slug)
     .eq("statut", "publie")
@@ -90,7 +93,28 @@ export default async function PostPage({
             <span key={slide.id} />
           ))}
         </div>
+
+        {post.sponsor_nom && (
+          <a
+            className="sponsor-block"
+            href={post.sponsor_lien || undefined}
+            target={post.sponsor_lien ? "_blank" : undefined}
+            rel={post.sponsor_lien ? "noopener noreferrer" : undefined}
+          >
+            <span className="sponsor-label">Sponsorisé par</span>
+            {post.sponsor_logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={post.sponsor_logo_url}
+                alt={post.sponsor_nom}
+                className="sponsor-logo"
+              />
+            )}
+            <span className="sponsor-nom">{post.sponsor_nom}</span>
+          </a>
+        )}
       </main>
+      <Footer />
     </>
   );
 }

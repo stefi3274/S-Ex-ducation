@@ -1,5 +1,6 @@
 import SiteHeader from "../components/SiteHeader";
 import Footer from "../components/Footer";
+import ContactForm from "../components/ContactForm";
 
 export const metadata = {
   title: "Contact — S-Ex-ducation",
@@ -15,6 +16,8 @@ export default function ContactPage() {
           Une question, une idée, envie de devenir partenaire ou
           sponsor ? Écris-nous.
         </p>
+
+        <ContactForm />
 
         <div className="contact-block">
           <p>

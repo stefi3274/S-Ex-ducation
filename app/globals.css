@@ -126,6 +126,11 @@ a {
   align-items: flex-start;
 }
 
+.footer-nav .credit {
+  color: #999;
+  font-size: 12px;
+}
+
 /* Pages texte (À propos, Contact, Mentions légales) */
 
 .page-texte {
@@ -498,7 +503,66 @@ a {
   border: 1px solid var(--rose);
 }
 
-/* Admin */
+/* Newsletter */
+
+.newsletter-block {
+  margin: 40px 0;
+  padding: 28px;
+  background: var(--noir);
+  color: var(--blanc);
+  border-radius: 20px;
+  text-align: center;
+}
+
+.newsletter-block h3 {
+  color: var(--blanc);
+  margin-bottom: 4px;
+}
+
+.newsletter-block p {
+  color: #ccc;
+  margin: 0 0 16px 0;
+}
+
+.newsletter-form {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.newsletter-form input {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: none;
+  min-width: 240px;
+  font-family: var(--font-body);
+}
+
+.newsletter-msg {
+  color: var(--turquoise);
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+/* Partage social */
+
+.share-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+/* Message de succès de formulaire */
+
+.form-success {
+  padding: 16px 20px;
+  background: var(--gris-clair);
+  border-left: 4px solid var(--turquoise);
+  border-radius: 10px;
+  font-weight: 600;
+}
 
 .admin-bar {
   display: flex;

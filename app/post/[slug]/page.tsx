@@ -3,6 +3,8 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 import { ENTREPRISE } from "@/lib/config";
 import SiteHeader from "../../components/SiteHeader";
 import Footer from "../../components/Footer";
+import ShareButtons from "../../components/ShareButtons";
+import NewsletterForm from "../../components/NewsletterForm";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +96,8 @@ export default async function PostPage({
           ))}
         </div>
 
+        <ShareButtons titre={post.titre} />
+
         {post.sponsor_nom && (
           <a
             className="sponsor-block"
@@ -113,6 +117,8 @@ export default async function PostPage({
             <span className="sponsor-nom">{post.sponsor_nom}</span>
           </a>
         )}
+
+        <NewsletterForm />
       </main>
       <Footer />
     </>

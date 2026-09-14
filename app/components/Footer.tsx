@@ -16,6 +16,7 @@ export default function Footer() {
           <Link href="/a-propos">À propos</Link>
           <Link href="/contact">Contact</Link>
           <Link href="/mentions-legales">Mentions légales</Link>
+          <span className="credit">Créé par SteFi Services</span>
         </nav>
       </div>
     </footer>

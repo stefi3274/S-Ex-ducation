@@ -261,7 +261,7 @@ function AdminDashboardInner() {
       .split(/\n-{3,}\n/)
       .map((bloc) => bloc.trim())
       .filter(Boolean)
-      .slice(0, 12);
+      .slice(0, 11);
 
     if (blocs.length < 2) {
       setErreurRapide(
@@ -287,18 +287,26 @@ function AdminDashboardInner() {
           statut: publierRapide ? "publie" : "brouillon",
           categorie: categorieRapide,
           type: "carousel",
-          nb_slides: blocs.length,
+          nb_slides: blocs.length + 1,
         })
         .select("id, slug")
         .single();
 
       if (insertError) throw insertError;
 
-      const slidesAInserer = blocs.map((bloc, position) => {
+      const slideIntro = {
+        post_id: nouveauPost.id,
+        position: 0,
+        titre,
+        texte: null,
+        image_url: null,
+      };
+
+      const slidesContenu = blocs.map((bloc, index) => {
         const lignes = bloc.split("\n");
         return {
           post_id: nouveauPost.id,
-          position,
+          position: index + 1,
           titre: lignes[0]?.trim() || null,
           texte: lignes.slice(1).join("\n").trim() || null,
           image_url: null,
@@ -307,7 +315,7 @@ function AdminDashboardInner() {
 
       const { error: slidesError } = await supabase
         .from("slides")
-        .insert(slidesAInserer);
+        .insert([slideIntro, ...slidesContenu]);
 
       if (slidesError) throw slidesError;
 
@@ -630,12 +638,15 @@ function AdminDashboardInner() {
           <p>Colle un texte, tu as un carousel. Le plus simple possible.</p>
 
           <form onSubmit={handleCreerCarouselRapide} className="admin-form">
-            <label>Titre (optionnel — sinon pris sur le premier slide)</label>
+            <label>
+              Titre — devient le slide de couverture (intro)
+            </label>
             <input
               type="text"
               value={titreRapide}
               onChange={(e) => setTitreRapide(e.target.value)}
-              placeholder="Ex. Rejoins la communauté"
+              placeholder="Ex. 10 idées erronées sur le consentement"
+              required
             />
 
             <label>Catégorie</label>
@@ -661,11 +672,10 @@ function AdminDashboardInner() {
               required
             />
             <p className="aide-texte">
-              Sépare chaque slide par une ligne de tirets (---). Entre 2 et
-              12 blocs. Première ligne de chaque bloc = titre du slide, le
-              reste = texte. Le nombre de slides est déduit automatiquement.
-              Tu pourras ajouter des images ensuite dans &quot;Modifier les
-              slides&quot;.
+              Le titre ci-dessus devient automatiquement le premier slide
+              (la couverture). Sépare ensuite chaque slide de contenu par
+              une ligne de tirets (---), jusqu&apos;à 11 blocs. Première
+              ligne de chaque bloc = titre du slide, le reste = texte.
             </p>
 
             <label className="checkbox-label">
@@ -1004,6 +1014,14 @@ function AdminDashboardInner() {
                             />
                           )}
                           <div className="slide-overlay">
+                            {selectedPost.type === "carousel" && (
+                              <span className="slide-label">
+                                {labelSlide(
+                                  slide.position,
+                                  slidesEnregistres.length
+                                )}
+                              </span>
+                            )}
                             {slide.titre && <h2>{slide.titre}</h2>}
                             {slide.texte && (
                               <p>{texteAvecAccents(slide.texte)}</p>

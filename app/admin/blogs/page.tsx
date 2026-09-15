@@ -6,6 +6,7 @@ import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import { ENTREPRISE, CATEGORIES, BLOG_STATUTS } from "@/lib/config";
 import { slugify } from "@/lib/slug";
+import { parserArticleColle } from "@/lib/parse-article";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,8 @@ export default function AdminBlogs() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [texteColle, setTexteColle] = useState("");
+
   const loadArticles = useCallback(async () => {
     const { data } = await supabase
       .from("blogs")
@@ -79,6 +82,17 @@ export default function AdminBlogs() {
       loadArticles();
     });
   }, [router, loadArticles, supabase]);
+
+  function handleRemplirDepuisTexte() {
+    const resultat = parserArticleColle(texteColle, CATEGORIES);
+
+    if (resultat.titre) setTitre(resultat.titre);
+    if (resultat.sousTitre) setSousTitre(resultat.sousTitre);
+    if (resultat.extrait) setExtrait(resultat.extrait);
+    if (resultat.categorieSlug) setCategorie(resultat.categorieSlug);
+    if (resultat.auteurNom) setAuteurNom(resultat.auteurNom);
+    if (resultat.contenu) setContenu(resultat.contenu);
+  }
 
   async function handleCreerArticle(e: React.FormEvent) {
     e.preventDefault();
@@ -108,7 +122,7 @@ export default function AdminBlogs() {
         extrait: extrait || null,
         contenu,
         categorie,
-        auteur_nom: auteurNom || "S-Ex-ducation",
+        auteur_nom: auteurNom || "Stef",
         statut: "publie",
         image_couverture_url,
       });
@@ -200,6 +214,33 @@ export default function AdminBlogs() {
         <h1>Blogs</h1>
 
         <div className="admin-section">
+          <h2>Coller un article déjà rédigé</h2>
+          <p>
+            Colle un texte au format Titre / Sous-titre / Résumé court /
+            Catégorie / Signer avec / Contenu (comme ce que je te donne
+            dans la conversation), et les champs ci-dessous se remplissent
+            tout seuls.
+          </p>
+          <div className="admin-form">
+            <textarea
+              value={texteColle}
+              onChange={(e) => setTexteColle(e.target.value)}
+              style={{ minHeight: 160 }}
+              placeholder={
+                "**Titre**\nTon titre\n\n**Sous-titre**\n...\n\n**Résumé court**\n...\n\n**Catégorie**\nJe m'informe\n\n**Signer avec**\nStef\n\n**Contenu**\n..."
+              }
+            />
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleRemplirDepuisTexte}
+            >
+              Remplir les champs
+            </button>
+          </div>
+        </div>
+
+        <div className="admin-section">
           <h2>Écrire un article (publié immédiatement)</h2>
           <form onSubmit={handleCreerArticle} className="admin-form">
             <label>Photo de couverture</label>
@@ -253,7 +294,7 @@ export default function AdminBlogs() {
               type="text"
               value={auteurNom}
               onChange={(e) => setAuteurNom(e.target.value)}
-              placeholder="S-Ex-ducation"
+              placeholder="Stef"
             />
             {error && <p className="admin-error">{error}</p>}
             <button type="submit" className="btn btn-primary" disabled={creating}>

@@ -723,7 +723,90 @@ a {
   color: #333;
 }
 
-/* Accent dans le texte des slides : exemples, italiques, noms propres */
+/* Export des slides en images téléchargeables (1080x1080) */
+
+.export-conteneur {
+  position: fixed;
+  top: 0;
+  left: -99999px;
+  z-index: -1;
+}
+
+.export-slide {
+  width: 1080px;
+  height: 1080px;
+  background: #fff0f5;
+  color: var(--blanc);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 90px;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.export-slide::before,
+.export-slide::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.65;
+  z-index: 0;
+}
+
+.export-slide::before {
+  width: 62%;
+  height: 62%;
+  top: -18%;
+  left: -18%;
+  background: var(--rose);
+}
+
+.export-slide::after {
+  width: 55%;
+  height: 55%;
+  bottom: -16%;
+  right: -16%;
+  background: var(--turquoise);
+}
+
+.export-slide-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.export-slide-overlay {
+  position: relative;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 32px;
+  padding: 45px;
+}
+
+.export-slide-overlay h2 {
+  font-size: 58px;
+  color: var(--blanc);
+  margin: 0 0 22px;
+  line-height: 1.15;
+}
+
+.export-slide-overlay p {
+  font-size: 36px;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.export-slide-overlay .export-cta {
+  margin-top: 36px;
+  font-weight: 600;
+}
 
 .accent-texte {
   color: var(--turquoise);

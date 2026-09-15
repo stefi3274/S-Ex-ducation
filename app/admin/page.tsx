@@ -13,6 +13,8 @@ import {
   labelSlide,
 } from "@/lib/config";
 import { slugify } from "@/lib/slug";
+import { texteAvecAccents } from "@/lib/texte";
+import CarouselDownload from "../components/CarouselDownload";
 
 export const dynamic = "force-dynamic";
 
@@ -311,8 +313,8 @@ function AdminDashboardInner() {
 
       setSuccesRapide(
         publierRapide
-          ? `Carousel publié : /post/${nouveauPost.slug}`
-          : `Carousel créé en brouillon. Publie-le depuis la liste ci-dessous quand tu es prêt·e.`
+          ? "Carousel créé. Ouvre-le ci-dessous pour l'aperçu et le télécharger."
+          : "Carousel créé en brouillon. Publie-le depuis la liste ci-dessous pour le finaliser."
       );
       setTitreRapide("");
       setTexteRapide("");
@@ -966,8 +968,72 @@ function AdminDashboardInner() {
             </div>
 
             <div className="admin-section">
+              <h3>Aperçu et téléchargement</h3>
+              <p>
+                Le carousel n&apos;est jamais publié sur le site : il reste
+                ici, pour être téléchargé puis partagé sur les réseaux.
+                Enregistre chaque slide ci-dessus avant de télécharger.
+              </p>
+
+              {(() => {
+                const slidesEnregistres = positionsActives
+                  .map((p) => slides[p])
+                  .filter((s): s is Slide => Boolean(s));
+
+                if (slidesEnregistres.length === 0) {
+                  return (
+                    <p className="aide-texte">
+                      Aucun slide enregistré pour l&apos;instant.
+                    </p>
+                  );
+                }
+
+                const derniereePosition = slidesEnregistres.length - 1;
+
+                return (
+                  <>
+                    <div className="carousel">
+                      {slidesEnregistres.map((slide, index) => (
+                        <div key={slide.id} className="slide">
+                          {slide.image_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={slide.image_url}
+                              alt={slide.titre ?? ""}
+                              className="slide-bg"
+                            />
+                          )}
+                          <div className="slide-overlay">
+                            {slide.titre && <h2>{slide.titre}</h2>}
+                            {slide.texte && (
+                              <p>{texteAvecAccents(slide.texte)}</p>
+                            )}
+                            {index === derniereePosition &&
+                              slidesEnregistres.length > 1 && (
+                                <p style={{ marginTop: 16, fontWeight: 600 }}>
+                                  {selectedPost.article_id
+                                    ? "Lis l'article complet sur le site. Lien en bio."
+                                    : "Suis S-Ex-ducation pour plus de contenu comme celui-ci."}
+                                </p>
+                              )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <CarouselDownload
+                      slides={slidesEnregistres}
+                      slug={selectedPost.slug}
+                      aUnArticle={!!selectedPost.article_id}
+                    />
+                  </>
+                );
+              })()}
+            </div>
+
+            <div className="admin-section">
               <h3>Sponsor / produit (optionnel)</h3>
-              <p>Affiché sous le carousel sur la page publique du post.</p>
+              <p>Affiché sous le carousel téléchargeable, dans l&apos;aperçu.</p>
               <div className="admin-form">
                 {selectedPost.sponsor_logo_url && (
                   // eslint-disable-next-line @next/next/no-img-element

@@ -809,10 +809,70 @@ a {
   font-weight: 600;
 }
 
+.slide-badge-categorie {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  color: var(--blanc);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  z-index: 3;
+}
+
+.export-slide-badge-categorie {
+  position: absolute;
+  top: 54px;
+  left: 54px;
+  color: var(--blanc);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 12px 32px;
+  border-radius: 999px;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  z-index: 3;
+}
+
+.slide-signature {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.export-slide-signature {
+  position: absolute;
+  bottom: 46px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 10px 30px;
+  border-radius: 999px;
+  white-space: nowrap;
+  z-index: 3;
+}
+
 .accent-texte {
-  color: var(--turquoise);
-  font-style: italic;
-  font-weight: 600;
+  color: var(--rose);
+  font-style: normal;
+  font-weight: 700;
 }
 
 .admin-bar {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { texteAvecAccents } from "@/lib/texte";
+import { couleurCategorie, nomCategorie } from "@/lib/config";
 
 type SlideExport = {
   id: string;
@@ -15,10 +16,12 @@ export default function CarouselDownload({
   slides,
   slug,
   aUnArticle,
+  categorieSlug,
 }: {
   slides: SlideExport[];
   slug: string;
   aUnArticle: boolean;
+  categorieSlug: string | null;
 }) {
   const [enCours, setEnCours] = useState(false);
   const [progres, setProgres] = useState(0);
@@ -92,6 +95,14 @@ export default function CarouselDownload({
             id={`export-slide-${slide.id}`}
             className="export-slide"
           >
+            {nomCategorie(categorieSlug) && (
+              <span
+                className="export-slide-badge-categorie"
+                style={{ background: couleurCategorie(categorieSlug) }}
+              >
+                {nomCategorie(categorieSlug)?.toUpperCase()}
+              </span>
+            )}
             {slide.image_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -112,6 +123,7 @@ export default function CarouselDownload({
                 </p>
               )}
             </div>
+            <span className="export-slide-signature">S-Ex-ducation</span>
           </div>
         ))}
       </div>

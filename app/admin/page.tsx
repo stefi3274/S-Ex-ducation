@@ -11,6 +11,8 @@ import {
   TAILLES_CAROUSEL,
   positionsPourTaille,
   labelSlide,
+  couleurCategorie,
+  nomCategorie,
 } from "@/lib/config";
 import { slugify } from "@/lib/slug";
 import { texteAvecAccents } from "@/lib/texte";
@@ -1005,6 +1007,20 @@ function AdminDashboardInner() {
                     <div className="carousel">
                       {slidesEnregistres.map((slide, index) => (
                         <div key={slide.id} className="slide">
+                          {nomCategorie(selectedPost.categorie) && (
+                            <span
+                              className="slide-badge-categorie"
+                              style={{
+                                background: couleurCategorie(
+                                  selectedPost.categorie
+                                ),
+                              }}
+                            >
+                              {nomCategorie(
+                                selectedPost.categorie
+                              )?.toUpperCase()}
+                            </span>
+                          )}
                           {slide.image_url && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -1035,6 +1051,9 @@ function AdminDashboardInner() {
                                 </p>
                               )}
                           </div>
+                          <span className="slide-signature">
+                            S-Ex-ducation
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -1043,6 +1062,7 @@ function AdminDashboardInner() {
                       slides={slidesEnregistres}
                       slug={selectedPost.slug}
                       aUnArticle={!!selectedPost.article_id}
+                      categorieSlug={selectedPost.categorie}
                     />
                   </>
                 );

@@ -6,19 +6,7 @@ function normaliser(s: string) {
     .trim();
 }
 
-export type ArticleColle = {
-  titre: string;
-  sousTitre: string;
-  extrait: string;
-  categorieSlug: string | null;
-  auteurNom: string;
-  contenu: string;
-  publierLe: string | null;
-};
-
-// Reconnaît une date au format AAAA-MM-JJ HH:MM (ou avec un T à la
-// place de l'espace) et la convertit en ISO, en heure locale.
-export function parserDateHeure(texte: string): string | null {
+function parserDateHeure(texte: string): string | null {
   const m = texte.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/);
   if (!m) return null;
   const [, y, mo, d, h, mi] = m;
@@ -32,39 +20,42 @@ export function parserDateHeure(texte: string): string | null {
   return isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-// Reconnaît un texte de la forme :
+export type CarouselColle = {
+  titre: string;
+  categorieSlug: string | null;
+  publierLe: string | null;
+  blocsSlides: string[];
+};
+
+// Reconnaît un bloc de la forme :
 // **Titre**
-// ...
-// **Sous-titre**
-// ...
-// **Résumé court**
 // ...
 // **Catégorie**
 // ...
-// **Signer avec**
-// ...
-// **Contenu**
-// ...
-export function parserArticleColle(
+// **Programmer le**
+// AAAA-MM-JJ HH:MM
+// **Slides**
+// Titre slide 1
+// Texte slide 1
+// ---
+// Titre slide 2
+// Texte slide 2
+function parserUnCarousel(
   texteBrut: string,
   categories: { slug: string; nom: string }[]
-): ArticleColle {
+): CarouselColle {
   const lignes = texteBrut.replace(/\r\n/g, "\n").split("\n");
   const sections: Record<string, string[]> = {};
   let cle: string | null = null;
 
   for (const ligne of lignes) {
     const trimmed = ligne.trim();
-
-    if (trimmed === "---") continue;
-
     const entete = trimmed.match(/^\*\*(.+?)\*\*$/);
     if (entete) {
       cle = normaliser(entete[1]);
       if (!sections[cle]) sections[cle] = [];
       continue;
     }
-
     if (cle) sections[cle].push(ligne);
   }
 
@@ -80,26 +71,30 @@ export function parserArticleColle(
     (c) => normaliser(c.nom) === normaliser(categorieTexte)
   );
 
+  const texteSlides = get("slides");
+  const blocsSlides = texteSlides
+    .split(/\n-{3,}\n/)
+    .map((b) => b.trim())
+    .filter(Boolean)
+    .slice(0, 11);
+
   return {
     titre: get("titre"),
-    sousTitre: get("sous-titre", "sous titre"),
-    extrait: get("resume court", "resume"),
     categorieSlug: categorie?.slug ?? null,
-    auteurNom: get("signer avec", "signature", "auteur"),
-    contenu: get("contenu"),
     publierLe: parserDateHeure(get("programmer le", "programme le", "date")),
+    blocsSlides,
   };
 }
 
-// Découpe un gros texte collé en plusieurs articles, séparés par une
+// Découpe un gros texte collé en plusieurs carousels, séparés par une
 // ligne de ==== (au moins 4 signes égal).
-export function parserLotArticles(
+export function parserLotCarousels(
   texteBrut: string,
   categories: { slug: string; nom: string }[]
-): ArticleColle[] {
+): CarouselColle[] {
   return texteBrut
     .split(/\n={4,}\n/)
     .map((bloc) => bloc.trim())
     .filter(Boolean)
-    .map((bloc) => parserArticleColle(bloc, categories));
+    .map((bloc) => parserUnCarousel(bloc, categories));
 }

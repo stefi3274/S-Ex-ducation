@@ -32,6 +32,23 @@ export const BLOG_STATUTS: Record<string, string> = {
   publie: "Publié",
 };
 
+export function estProgramme(
+  statut: string,
+  publierLe: string | null
+): boolean {
+  return statut === "publie" && !!publierLe && new Date(publierLe) > new Date();
+}
+
+export function formatDateHeure(iso: string) {
+  return new Date(iso).toLocaleString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export type Categorie = {
   slug: string;
   nom: string;

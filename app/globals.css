@@ -1097,6 +1097,27 @@ a {
   color: var(--blanc);
 }
 
+.badge.programme {
+  background: #b8860b;
+  color: var(--blanc);
+}
+
+.planificateur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.planificateur input[type="datetime-local"] {
+  padding: 6px 10px;
+  border: 2px solid var(--gris-clair);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
 .badge.brouillon {
   background: var(--gris-texte);
   color: var(--blanc);

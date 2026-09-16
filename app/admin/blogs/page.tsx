@@ -4,9 +4,9 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
-import { ENTREPRISE, CATEGORIES, BLOG_STATUTS } from "@/lib/config";
+import { ENTREPRISE, CATEGORIES, BLOG_STATUTS, estProgramme, formatDateHeure } from "@/lib/config";
 import { slugify } from "@/lib/slug";
-import { parserArticleColle } from "@/lib/parse-article";
+import { parserArticleColle, parserLotArticles } from "@/lib/parse-article";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,7 @@ type Article = {
   statut: Statut;
   commentaire_admin: string | null;
   created_at: string;
+  publier_le: string | null;
 };
 
 const ONGLETS: { valeur: Statut | "tous"; label: string }[] = [
@@ -56,16 +57,27 @@ export default function AdminBlogs() {
   const [categorie, setCategorie] = useState(CATEGORIES[0].slug);
   const [auteurNom, setAuteurNom] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [publierLe, setPublierLe] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [texteColle, setTexteColle] = useState("");
+  const [texteLot, setTexteLot] = useState("");
+  const [lotEnCours, setLotEnCours] = useState(false);
+  const [resultatLot, setResultatLot] = useState<string | null>(null);
+  const [datesProgrammation, setDatesProgrammation] = useState<
+    Record<string, string>
+  >({});
+  const [photosFichier, setPhotosFichier] = useState<Record<string, File>>(
+    {}
+  );
+  const [photoEnCours, setPhotoEnCours] = useState<string | null>(null);
 
   const loadArticles = useCallback(async () => {
     const { data } = await supabase
       .from("blogs")
       .select(
-        "id, titre, sous_titre, slug, extrait, contenu, image_couverture_url, categorie, auteur_nom, auteur_email, statut, commentaire_admin, created_at"
+        "id, titre, sous_titre, slug, extrait, contenu, image_couverture_url, categorie, auteur_nom, auteur_email, statut, commentaire_admin, created_at, publier_le"
       )
       .eq("entreprise", ENTREPRISE)
       .order("created_at", { ascending: false });
@@ -92,6 +104,48 @@ export default function AdminBlogs() {
     if (resultat.categorieSlug) setCategorie(resultat.categorieSlug);
     if (resultat.auteurNom) setAuteurNom(resultat.auteurNom);
     if (resultat.contenu) setContenu(resultat.contenu);
+  }
+
+  async function handleCreerLotArticles() {
+    setResultatLot(null);
+    setError(null);
+
+    const articles = parserLotArticles(texteLot, CATEGORIES);
+    const valides = articles.filter((a) => a.titre && a.contenu);
+
+    if (valides.length === 0) {
+      setResultatLot(
+        "Aucun article détecté. Vérifie que chaque article a bien un **Titre** et un **Contenu**, séparés par une ligne de ===="
+      );
+      return;
+    }
+
+    setLotEnCours(true);
+    let reussis = 0;
+
+    for (const a of valides) {
+      const slug = `${slugify(a.titre)}-${Date.now().toString().slice(-5)}-${reussis}`;
+      const { error: insertError } = await supabase.from("blogs").insert({
+        entreprise: ENTREPRISE,
+        titre: a.titre,
+        sous_titre: a.sousTitre || null,
+        slug,
+        extrait: a.extrait || null,
+        contenu: a.contenu,
+        categorie: a.categorieSlug || CATEGORIES[0].slug,
+        auteur_nom: a.auteurNom || "Stef",
+        statut: "publie",
+        publier_le: a.publierLe,
+      });
+      if (!insertError) reussis += 1;
+    }
+
+    setResultatLot(
+      `${reussis} article${reussis > 1 ? "s" : ""} créé${reussis > 1 ? "s" : ""} sur ${valides.length} détecté${valides.length > 1 ? "s" : ""}.`
+    );
+    setTexteLot("");
+    setLotEnCours(false);
+    await loadArticles();
   }
 
   async function handleCreerArticle(e: React.FormEvent) {
@@ -124,6 +178,7 @@ export default function AdminBlogs() {
         categorie,
         auteur_nom: auteurNom || "Stef",
         statut: "publie",
+        publier_le: publierLe ? new Date(publierLe).toISOString() : null,
         image_couverture_url,
       });
 
@@ -135,6 +190,7 @@ export default function AdminBlogs() {
       setContenu("");
       setAuteurNom("");
       setImage(null);
+      setPublierLe("");
       await loadArticles();
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
@@ -162,6 +218,73 @@ export default function AdminBlogs() {
     setOuvert(null);
     setActionEnCours(false);
     await loadArticles();
+  }
+
+  async function handleProgrammerArticle(article: Article) {
+    const valeur = datesProgrammation[article.id];
+    if (!valeur) {
+      setError("Choisis une date avant de cliquer sur Programmer.");
+      return;
+    }
+    setError(null);
+    const { error: updateError } = await supabase
+      .from("blogs")
+      .update({ publier_le: new Date(valeur).toISOString() })
+      .eq("id", article.id);
+
+    if (updateError) {
+      setError(`Impossible de programmer "${article.titre}" : ${updateError.message}`);
+      return;
+    }
+
+    setDatesProgrammation((prev) => {
+      const copie = { ...prev };
+      delete copie[article.id];
+      return copie;
+    });
+    await loadArticles();
+  }
+
+  async function handleRetirerProgrammationArticle(article: Article) {
+    await supabase.from("blogs").update({ publier_le: null }).eq("id", article.id);
+    await loadArticles();
+  }
+
+  async function handleChangerPhoto(article: Article) {
+    const fichier = photosFichier[article.id];
+    if (!fichier) {
+      setError("Choisis d'abord une image.");
+      return;
+    }
+    setError(null);
+    setPhotoEnCours(article.id);
+
+    try {
+      const path = `blog-photos/${article.id}-${Date.now()}-${fichier.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("sexed")
+        .upload(path, fichier);
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("sexed").getPublicUrl(path);
+
+      const { error: updateError } = await supabase
+        .from("blogs")
+        .update({ image_couverture_url: data.publicUrl })
+        .eq("id", article.id);
+      if (updateError) throw updateError;
+
+      setPhotosFichier((prev) => {
+        const copie = { ...prev };
+        delete copie[article.id];
+        return copie;
+      });
+      await loadArticles();
+    } catch (err) {
+      setError("Impossible de changer la photo. Réessaie.");
+    } finally {
+      setPhotoEnCours(null);
+    }
   }
 
   async function handleSupprimer(article: Article) {
@@ -204,6 +327,9 @@ export default function AdminBlogs() {
           <a href="/admin" className="btn btn-outline">
             ← Tableau de bord
           </a>
+          <a href="/admin/calendrier" className="btn btn-outline">
+            Calendrier
+          </a>
           <button className="btn btn-outline" onClick={handleLogout}>
             Déconnexion
           </button>
@@ -236,6 +362,38 @@ export default function AdminBlogs() {
               onClick={handleRemplirDepuisTexte}
             >
               Remplir les champs
+            </button>
+          </div>
+        </div>
+
+        <div className="admin-section">
+          <h2>Coller plusieurs articles d&apos;un coup (lot)</h2>
+          <p>
+            Colle plusieurs articles à la suite, chacun au format habituel
+            (Titre / Sous-titre / Résumé court / Catégorie / Signer avec /
+            Contenu), séparés par une ligne de <strong>====</strong>. Ajoute
+            un bloc <strong>**Programmer le**</strong> avec une date au
+            format AAAA-MM-JJ HH:MM pour programmer cet article (sinon il
+            est publié tout de suite). Les images de couverture ne peuvent
+            pas être collées : ajoute-les ensuite une par une si besoin.
+          </p>
+          <div className="admin-form">
+            <textarea
+              value={texteLot}
+              onChange={(e) => setTexteLot(e.target.value)}
+              style={{ minHeight: 220 }}
+              placeholder={
+                "**Titre**\nPremier article\n**Catégorie**\nJe m'informe\n**Programmer le**\n2026-09-20 09:00\n**Contenu**\n...\n\n====\n\n**Titre**\nDeuxième article\n**Catégorie**\nSociété\n**Contenu**\n..."
+              }
+            />
+            {resultatLot && <p className="form-success">{resultatLot}</p>}
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={lotEnCours}
+              onClick={handleCreerLotArticles}
+            >
+              {lotEnCours ? "Création..." : "Créer le lot"}
             </button>
           </div>
         </div>
@@ -296,9 +454,21 @@ export default function AdminBlogs() {
               onChange={(e) => setAuteurNom(e.target.value)}
               placeholder="Stef"
             />
+            <label>
+              Programmer pour le (optionnel — sinon publié tout de suite)
+            </label>
+            <input
+              type="datetime-local"
+              value={publierLe}
+              onChange={(e) => setPublierLe(e.target.value)}
+            />
             {error && <p className="admin-error">{error}</p>}
             <button type="submit" className="btn btn-primary" disabled={creating}>
-              {creating ? "Publication..." : "Publier l'article"}
+              {creating
+                ? "Publication..."
+                : publierLe
+                ? "Programmer l'article"
+                : "Publier l'article"}
             </button>
           </form>
         </div>
@@ -332,9 +502,56 @@ export default function AdminBlogs() {
                     {article.auteur_nom || "Anonyme"}
                     {article.auteur_email ? ` · ${article.auteur_email}` : ""}
                   </p>
-                  <span className={`badge ${article.statut === "publie" ? "publie" : "brouillon"}`}>
-                    {BLOG_STATUTS[article.statut]}
-                  </span>
+                  <span
+                    className={`badge ${
+                      estProgramme(article.statut, article.publier_le)
+                        ? "brouillon"
+                        : article.statut === "publie"
+                        ? "publie"
+                        : "brouillon"
+                    }`}
+                  >
+                    {estProgramme(article.statut, article.publier_le)
+                      ? "En attente"
+                      : BLOG_STATUTS[article.statut]}
+                  </span>{" "}
+                  {estProgramme(article.statut, article.publier_le) && (
+                    <span className="badge programme">
+                      Programmé —{" "}
+                      {formatDateHeure(article.publier_le as string)}
+                    </span>
+                  )}
+
+                  {article.statut === "publie" && (
+                    <div className="planificateur">
+                      <input
+                        type="datetime-local"
+                        value={datesProgrammation[article.id] ?? ""}
+                        onChange={(e) =>
+                          setDatesProgrammation((prev) => ({
+                            ...prev,
+                            [article.id]: e.target.value,
+                          }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => handleProgrammerArticle(article)}
+                      >
+                        Programmer
+                      </button>
+                      {article.publier_le && (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => handleRetirerProgrammationArticle(article)}
+                        >
+                          Retirer la date
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {ouvert === article.id ? (
                     <div className="admin-section" style={{ marginTop: 16 }}>
@@ -355,6 +572,36 @@ export default function AdminBlogs() {
                           style={{ maxWidth: 240 }}
                         />
                       )}
+
+                      <div className="admin-form" style={{ maxWidth: 320 }}>
+                        <label>
+                          {article.image_couverture_url
+                            ? "Changer la photo de couverture"
+                            : "Ajouter une photo de couverture"}
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) =>
+                            setPhotosFichier((prev) => ({
+                              ...prev,
+                              ...(e.target.files?.[0]
+                                ? { [article.id]: e.target.files[0] }
+                                : {}),
+                            }))
+                          }
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          disabled={photoEnCours === article.id}
+                          onClick={() => handleChangerPhoto(article)}
+                        >
+                          {photoEnCours === article.id
+                            ? "Envoi..."
+                            : "Enregistrer la photo"}
+                        </button>
+                      </div>
 
                       <div className="admin-form" style={{ marginTop: 12 }}>
                         <label>

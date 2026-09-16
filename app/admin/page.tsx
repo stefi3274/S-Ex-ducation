@@ -13,9 +13,12 @@ import {
   labelSlide,
   couleurCategorie,
   nomCategorie,
+  estProgramme,
+  formatDateHeure,
 } from "@/lib/config";
 import { slugify } from "@/lib/slug";
 import { texteAvecAccents } from "@/lib/texte";
+import { parserLotCarousels } from "@/lib/parse-carousel";
 import CarouselDownload from "../components/CarouselDownload";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +38,7 @@ type Post = {
   sponsor_nom: string | null;
   sponsor_logo_url: string | null;
   sponsor_lien: string | null;
+  publier_le: string | null;
 };
 
 type Slide = {
@@ -99,9 +103,16 @@ function AdminDashboardInner() {
   const [categorieRapide, setCategorieRapide] = useState(CATEGORIES[0].slug);
   const [texteRapide, setTexteRapide] = useState("");
   const [publierRapide, setPublierRapide] = useState(true);
+  const [publierLeRapide, setPublierLeRapide] = useState("");
   const [creationRapide, setCreationRapide] = useState(false);
   const [erreurRapide, setErreurRapide] = useState<string | null>(null);
   const [succesRapide, setSuccesRapide] = useState<string | null>(null);
+
+  const [texteLotCarousels, setTexteLotCarousels] = useState("");
+  const [lotCarouselsEnCours, setLotCarouselsEnCours] = useState(false);
+  const [resultatLotCarousels, setResultatLotCarousels] = useState<
+    string | null
+  >(null);
 
   const [nouveauTitre, setNouveauTitre] = useState("");
   const [nouvelleCategorie, setNouvelleCategorie] = useState(
@@ -127,6 +138,9 @@ function AdminDashboardInner() {
   const [sponsorLien, setSponsorLien] = useState("");
   const [sponsorFile, setSponsorFile] = useState<File | null>(null);
   const [sponsorSaving, setSponsorSaving] = useState(false);
+  const [datesProgrammation, setDatesProgrammation] = useState<
+    Record<string, string>
+  >({});
 
   const positionsActives =
     selectedPost?.type === "post"
@@ -137,7 +151,7 @@ function AdminDashboardInner() {
     const { data } = await supabase
       .from("posts")
       .select(
-        "id, titre, slug, statut, created_at, categorie, type, nb_slides, article_id, sponsor_nom, sponsor_logo_url, sponsor_lien"
+        "id, titre, slug, statut, created_at, categorie, type, nb_slides, article_id, sponsor_nom, sponsor_logo_url, sponsor_lien, publier_le"
       )
       .eq("entreprise", ENTREPRISE)
       .order("created_at", { ascending: false });
@@ -286,7 +300,10 @@ function AdminDashboardInner() {
           entreprise: ENTREPRISE,
           titre,
           slug,
-          statut: publierRapide ? "publie" : "brouillon",
+          statut: publierLeRapide || publierRapide ? "publie" : "brouillon",
+          publier_le: publierLeRapide
+            ? new Date(publierLeRapide).toISOString()
+            : null,
           categorie: categorieRapide,
           type: "carousel",
           nb_slides: blocs.length + 1,
@@ -322,12 +339,17 @@ function AdminDashboardInner() {
       if (slidesError) throw slidesError;
 
       setSuccesRapide(
-        publierRapide
+        publierLeRapide
+          ? `Carousel programmé pour le ${formatDateHeure(
+              new Date(publierLeRapide).toISOString()
+            )}.`
+          : publierRapide
           ? "Carousel créé. Ouvre-le ci-dessous pour l'aperçu et le télécharger."
           : "Carousel créé en brouillon. Publie-le depuis la liste ci-dessous pour le finaliser."
       );
       setTitreRapide("");
       setTexteRapide("");
+      setPublierLeRapide("");
       await loadPosts();
       await loadStats();
     } catch (err) {
@@ -338,6 +360,78 @@ function AdminDashboardInner() {
     } finally {
       setCreationRapide(false);
     }
+  }
+
+  async function handleCreerLotCarousels() {
+    setResultatLotCarousels(null);
+
+    const carousels = parserLotCarousels(texteLotCarousels, CATEGORIES);
+    const valides = carousels.filter(
+      (c) => c.titre && c.blocsSlides.length >= 1
+    );
+
+    if (valides.length === 0) {
+      setResultatLotCarousels(
+        "Aucun carousel détecté. Vérifie le format : **Titre**, **Slides** (avec des blocs séparés par ---), séparés d'un carousel à l'autre par une ligne de ===="
+      );
+      return;
+    }
+
+    setLotCarouselsEnCours(true);
+    let reussis = 0;
+
+    for (const c of valides) {
+      const slug = `${slugify(c.titre)}-${Date.now().toString().slice(-5)}-${reussis}`;
+
+      const { data: nouveauPost, error: insertError } = await supabase
+        .from("posts")
+        .insert({
+          entreprise: ENTREPRISE,
+          titre: c.titre,
+          slug,
+          statut: "publie",
+          publier_le: c.publierLe,
+          categorie: c.categorieSlug || CATEGORIES[0].slug,
+          type: "carousel",
+          nb_slides: c.blocsSlides.length + 1,
+        })
+        .select("id")
+        .single();
+
+      if (insertError || !nouveauPost) continue;
+
+      const slideIntro = {
+        post_id: nouveauPost.id,
+        position: 0,
+        titre: c.titre,
+        texte: null,
+        image_url: null,
+      };
+      const slidesContenu = c.blocsSlides.map((bloc, index) => {
+        const lignes = bloc.split("\n");
+        return {
+          post_id: nouveauPost.id,
+          position: index + 1,
+          titre: lignes[0]?.trim() || null,
+          texte: lignes.slice(1).join("\n").trim() || null,
+          image_url: null,
+        };
+      });
+
+      const { error: slidesError } = await supabase
+        .from("slides")
+        .insert([slideIntro, ...slidesContenu]);
+
+      if (!slidesError) reussis += 1;
+    }
+
+    setResultatLotCarousels(
+      `${reussis} carousel${reussis > 1 ? "s" : ""} créé${reussis > 1 ? "s" : ""} sur ${valides.length} détecté${valides.length > 1 ? "s" : ""}.`
+    );
+    setTexteLotCarousels("");
+    setLotCarouselsEnCours(false);
+    await loadPosts();
+    await loadStats();
   }
 
   async function loadSlides(post: Post) {
@@ -545,6 +639,41 @@ function AdminDashboardInner() {
     }
   }
 
+  async function handleProgrammerPost(post: Post) {
+    const valeur = datesProgrammation[post.id];
+    if (!valeur) {
+      setError("Choisis une date avant de cliquer sur Programmer.");
+      return;
+    }
+    setError(null);
+    const { error: updateError } = await supabase
+      .from("posts")
+      .update({
+        statut: "publie",
+        publier_le: new Date(valeur).toISOString(),
+      })
+      .eq("id", post.id);
+
+    if (updateError) {
+      setError(`Impossible de programmer "${post.titre}" : ${updateError.message}`);
+      return;
+    }
+
+    setDatesProgrammation((prev) => {
+      const copie = { ...prev };
+      delete copie[post.id];
+      return copie;
+    });
+    await loadPosts();
+    await loadStats();
+  }
+
+  async function handleRetirerProgrammationPost(post: Post) {
+    await supabase.from("posts").update({ publier_le: null }).eq("id", post.id);
+    await loadPosts();
+    await loadStats();
+  }
+
   async function handleDeletePost(post: Post) {
     setError(null);
     const { data, error: deleteError } = await supabase
@@ -603,6 +732,9 @@ function AdminDashboardInner() {
       <div className="admin-bar">
         <span>S-Ex-ducation — Admin</span>
         <div className="admin-bar-actions">
+          <a href="/admin/calendrier" className="btn btn-outline">
+            Calendrier
+          </a>
           <a href="/admin/blogs" className="btn btn-outline">
             Gérer les blogs
           </a>
@@ -689,6 +821,16 @@ function AdminDashboardInner() {
               Publier tout de suite (sinon enregistré en brouillon)
             </label>
 
+            <label>
+              Ou programmer pour plus tard (optionnel — prend le dessus sur
+              la case ci-dessus)
+            </label>
+            <input
+              type="datetime-local"
+              value={publierLeRapide}
+              onChange={(e) => setPublierLeRapide(e.target.value)}
+            />
+
             {erreurRapide && <p className="admin-error">{erreurRapide}</p>}
             {succesRapide && <p className="form-success">{succesRapide}</p>}
 
@@ -700,6 +842,39 @@ function AdminDashboardInner() {
               {creationRapide ? "Création..." : "Créer le carousel"}
             </button>
           </form>
+        </div>
+
+        <div className="carousel-rapide">
+          <h2>Coller plusieurs carousels d&apos;un coup (lot)</h2>
+          <p>
+            Pour des semaines de contenu en une fois. Format par carousel :{" "}
+            <strong>**Titre**</strong>, <strong>**Catégorie**</strong>,{" "}
+            <strong>**Programmer le**</strong> (AAAA-MM-JJ HH:MM, optionnel),
+            puis <strong>**Slides**</strong> avec les blocs séparés par ---.
+            Sépare chaque carousel du suivant par une ligne de{" "}
+            <strong>====</strong>.
+          </p>
+          <div className="admin-form">
+            <textarea
+              value={texteLotCarousels}
+              onChange={(e) => setTexteLotCarousels(e.target.value)}
+              style={{ minHeight: 220 }}
+              placeholder={
+                "**Titre**\nPremier carousel\n**Catégorie**\nSociété\n**Programmer le**\n2026-09-20 09:00\n**Slides**\nSlide 1 titre\nSlide 1 texte\n---\nSlide 2 titre\nSlide 2 texte\n\n====\n\n**Titre**\nDeuxième carousel\n**Catégorie**\nJe m'informe\n**Slides**\nSlide 1 titre\nSlide 1 texte"
+              }
+            />
+            {resultatLotCarousels && (
+              <p className="form-success">{resultatLotCarousels}</p>
+            )}
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={lotCarouselsEnCours}
+              onClick={handleCreerLotCarousels}
+            >
+              {lotCarouselsEnCours ? "Création..." : "Créer le lot"}
+            </button>
+          </div>
         </div>
 
         <div className="admin-section">
@@ -806,9 +981,24 @@ function AdminDashboardInner() {
                 <div key={post.id} className="post-row">
                   <div>
                     <div className="titre">{post.titre}</div>
-                    <span className={`badge ${post.statut}`}>
-                      {post.statut === "publie" ? "Publié" : "Brouillon"}
+                    <span
+                      className={`badge ${
+                        estProgramme(post.statut, post.publier_le)
+                          ? "brouillon"
+                          : post.statut
+                      }`}
+                    >
+                      {estProgramme(post.statut, post.publier_le)
+                        ? "En attente"
+                        : post.statut === "publie"
+                        ? "Publié"
+                        : "Brouillon"}
                     </span>{" "}
+                    {estProgramme(post.statut, post.publier_le) && (
+                      <span className="badge programme">
+                        Programmé — {formatDateHeure(post.publier_le as string)}
+                      </span>
+                    )}{" "}
                     <span className="badge badge-type">
                       {post.type === "post"
                         ? "Post simple"
@@ -825,6 +1015,34 @@ function AdminDashboardInner() {
                         {categorie.nom}
                       </span>
                     )}
+                    <div className="planificateur">
+                      <input
+                        type="datetime-local"
+                        value={datesProgrammation[post.id] ?? ""}
+                        onChange={(e) =>
+                          setDatesProgrammation((prev) => ({
+                            ...prev,
+                            [post.id]: e.target.value,
+                          }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => handleProgrammerPost(post)}
+                      >
+                        Programmer
+                      </button>
+                      {post.publier_le && (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => handleRetirerProgrammationPost(post)}
+                        >
+                          Retirer la date
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="row-actions">
                     <button

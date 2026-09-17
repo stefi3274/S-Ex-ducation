@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import { ENTREPRISE, CATEGORIES, BLOG_STATUTS, estProgramme, formatDateHeure } from "@/lib/config";
+import { messageErreur } from "@/lib/erreur";
 import { slugify } from "@/lib/slug";
 import { parserArticleColle, parserLotArticles } from "@/lib/parse-article";
 
@@ -193,7 +194,7 @@ export default function AdminBlogs() {
       setPublierLe("");
       await loadArticles();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
+      const message = messageErreur(err);
       setError(
         `Impossible de créer l'article.${message ? ` (${message})` : ""}`
       );
@@ -281,7 +282,7 @@ export default function AdminBlogs() {
       });
       await loadArticles();
     } catch (err) {
-      setError("Impossible de changer la photo. Réessaie.");
+      setError(`Impossible de changer la photo.${messageErreur(err) ? ` (${messageErreur(err)})` : ""}`);
     } finally {
       setPhotoEnCours(null);
     }

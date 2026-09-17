@@ -17,6 +17,7 @@ import {
   formatDateHeure,
 } from "@/lib/config";
 import { slugify } from "@/lib/slug";
+import { messageErreur } from "@/lib/erreur";
 import { texteAvecAccents } from "@/lib/texte";
 import { parserLotCarousels } from "@/lib/parse-carousel";
 import CarouselDownload from "../components/CarouselDownload";
@@ -260,8 +261,9 @@ function AdminDashboardInner() {
       await loadPosts();
       await loadStats();
     } catch (err) {
+      const message = messageErreur(err);
       setError(
-        "Impossible de créer le post. Le titre donne peut-être un slug déjà utilisé."
+        `Impossible de créer le post.${message ? ` (${message})` : " Le titre donne peut-être un slug déjà utilisé."}`
       );
     } finally {
       setCreating(false);
@@ -353,7 +355,7 @@ function AdminDashboardInner() {
       await loadPosts();
       await loadStats();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
+      const message = messageErreur(err);
       setErreurRapide(
         `Impossible de créer le carousel.${message ? ` (${message})` : ""}`
       );
@@ -511,11 +513,12 @@ function AdminDashboardInner() {
 
       await loadSlides(selectedPost);
     } catch (err) {
+      const message = messageErreur(err);
       setError(
         `Impossible d'enregistrer le slide "${labelSlide(
           position,
           selectedPost.nb_slides ?? 6
-        )}". Réessaie.`
+        )}".${message ? ` (${message})` : ""}`
       );
     } finally {
       setSavingPosition(null);
@@ -600,7 +603,7 @@ function AdminDashboardInner() {
         sponsor_logo_url,
       });
     } catch (err) {
-      setError("Impossible d'enregistrer le sponsor. Réessaie.");
+      setError(`Impossible d'enregistrer le sponsor.${messageErreur(err) ? ` (${messageErreur(err)})` : ""}`);
     } finally {
       setSponsorSaving(false);
     }

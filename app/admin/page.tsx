@@ -330,7 +330,9 @@ function AdminDashboardInner() {
           type: "carousel",
           nb_slides: blocs.length + 1,
         })
-        .select("id, slug")
+        .select(
+          "id, titre, slug, statut, created_at, categorie, type, nb_slides, article_id, sponsor_nom, sponsor_logo_url, sponsor_lien, publier_le"
+        )
         .single();
 
       if (insertError) throw insertError;
@@ -364,16 +366,17 @@ function AdminDashboardInner() {
         publierLeRapide
           ? `Carousel programmé pour le ${formatDateHeure(
               new Date(publierLeRapide).toISOString()
-            )}.`
+            )}. Aperçu ci-dessous.`
           : publierRapide
-          ? "Carousel créé. Ouvre-le ci-dessous pour l'aperçu et le télécharger."
-          : "Carousel créé en brouillon. Publie-le depuis la liste ci-dessous pour le finaliser."
+          ? "Carousel créé. Aperçu et téléchargement juste en dessous."
+          : "Carousel créé en brouillon. Aperçu ci-dessous, publie-le quand tu es prêt·e."
       );
       setTitreRapide("");
       setTexteRapide("");
       setPublierLeRapide("");
       await loadPosts();
       await loadStats();
+      await loadSlides(nouveauPost as Post);
     } catch (err) {
       const message = messageErreur(err);
       setErreurRapide(
@@ -458,6 +461,8 @@ function AdminDashboardInner() {
 
   async function loadSlides(post: Post) {
     setSelectedPost(post);
+    setSlides({});
+    setDrafts({});
     setSponsorNom(post.sponsor_nom ?? "");
     setSponsorLien(post.sponsor_lien ?? "");
     setSponsorFile(null);
@@ -503,6 +508,7 @@ function AdminDashboardInner() {
 
     try {
       const draft = drafts[position];
+      if (!draft) return;
       const existant = slides[position];
       let image_url = existant?.image_url ?? null;
 
@@ -1209,14 +1215,14 @@ function AdminDashboardInner() {
                       <input
                         type="text"
                         placeholder="Titre du slide"
-                        value={draft.titre}
+                        value={draft?.titre ?? ""}
                         onChange={(e) =>
                           updateDraft(position, { titre: e.target.value })
                         }
                       />
                       <textarea
                         placeholder="Texte du slide"
-                        value={draft.texte}
+                        value={draft?.texte ?? ""}
                         onChange={(e) =>
                           updateDraft(position, { texte: e.target.value })
                         }

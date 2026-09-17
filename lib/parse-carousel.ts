@@ -40,7 +40,7 @@ export type CarouselColle = {
 // ---
 // Titre slide 2
 // Texte slide 2
-function parserUnCarousel(
+export function parserCarouselColle(
   texteBrut: string,
   categories: { slug: string; nom: string }[]
 ): CarouselColle {
@@ -96,5 +96,5 @@ export function parserLotCarousels(
     .split(/\n={4,}\n/)
     .map((bloc) => bloc.trim())
     .filter(Boolean)
-    .map((bloc) => parserUnCarousel(bloc, categories));
+    .map((bloc) => parserCarouselColle(bloc, categories));
 }

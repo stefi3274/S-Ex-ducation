@@ -19,7 +19,7 @@ import {
 import { slugify } from "@/lib/slug";
 import { messageErreur } from "@/lib/erreur";
 import { texteAvecAccents } from "@/lib/texte";
-import { parserLotCarousels } from "@/lib/parse-carousel";
+import { parserLotCarousels, parserCarouselColle } from "@/lib/parse-carousel";
 import CarouselDownload from "../components/CarouselDownload";
 
 export const dynamic = "force-dynamic";
@@ -102,6 +102,7 @@ function AdminDashboardInner() {
 
   const [titreRapide, setTitreRapide] = useState("");
   const [categorieRapide, setCategorieRapide] = useState(CATEGORIES[0].slug);
+  const [texteACollerRapide, setTexteACollerRapide] = useState("");
   const [texteRapide, setTexteRapide] = useState("");
   const [publierRapide, setPublierRapide] = useState(true);
   const [publierLeRapide, setPublierLeRapide] = useState("");
@@ -267,6 +268,25 @@ function AdminDashboardInner() {
       );
     } finally {
       setCreating(false);
+    }
+  }
+
+  function handleRemplirCarouselRapide() {
+    const resultat = parserCarouselColle(texteACollerRapide, CATEGORIES);
+
+    if (resultat.titre) setTitreRapide(resultat.titre);
+    if (resultat.categorieSlug) setCategorieRapide(resultat.categorieSlug);
+    if (resultat.blocsSlides.length > 0) {
+      setTexteRapide(resultat.blocsSlides.join("\n---\n"));
+    }
+    if (resultat.publierLe) {
+      const d = new Date(resultat.publierLe);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setPublierLeRapide(
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+          d.getHours()
+        )}:${pad(d.getMinutes())}`
+      );
     }
   }
 
@@ -773,6 +793,32 @@ function AdminDashboardInner() {
         <div className="carousel-rapide">
           <h2>Carousel rapide</h2>
           <p>Colle un texte, tu as un carousel. Le plus simple possible.</p>
+
+          <div className="admin-form">
+            <label>
+              Coller le carousel entier (titre, catégorie et slides)
+            </label>
+            <textarea
+              value={texteACollerRapide}
+              onChange={(e) => setTexteACollerRapide(e.target.value)}
+              style={{ minHeight: 200 }}
+              placeholder={
+                "**Titre**\n10 idées erronées sur le consentement\n\n**Catégorie**\nMythe et réalité\n\n**Slides**\nTitre du slide 1\nTexte du slide 1\n---\nTitre du slide 2\nTexte du slide 2"
+              }
+            />
+            <p className="aide-texte">
+              Le titre devient automatiquement le slide de couverture
+              (intro). Ajoute un bloc **Programmer le** (AAAA-MM-JJ HH:MM)
+              si tu veux programmer directement.
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleRemplirCarouselRapide}
+            >
+              Remplir les champs
+            </button>
+          </div>
 
           <form onSubmit={handleCreerCarouselRapide} className="admin-form">
             <label>

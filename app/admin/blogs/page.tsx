@@ -51,6 +51,9 @@ export default function AdminBlogs() {
   const [commentaire, setCommentaire] = useState("");
   const [actionEnCours, setActionEnCours] = useState(false);
 
+  const [ongletCreation, setOngletCreation] = useState<
+    "unique" | "lot" | null
+  >(null);
   const [titre, setTitre] = useState("");
   const [sousTitre, setSousTitre] = useState("");
   const [extrait, setExtrait] = useState("");
@@ -340,6 +343,29 @@ export default function AdminBlogs() {
       <main className="wrap">
         <h1>Blogs</h1>
 
+        <div className="row-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() =>
+              setOngletCreation((prev) => (prev === "unique" ? null : "unique"))
+            }
+          >
+            {ongletCreation === "unique" ? "Fermer" : "Écrire un article"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              setOngletCreation((prev) => (prev === "lot" ? null : "lot"))
+            }
+          >
+            {ongletCreation === "lot" ? "Fermer" : "Coller plusieurs articles"}
+          </button>
+        </div>
+
+        {ongletCreation === "unique" && (
+          <>
         <div className="admin-section">
           <h2>Coller un article déjà rédigé</h2>
           <p>
@@ -363,38 +389,6 @@ export default function AdminBlogs() {
               onClick={handleRemplirDepuisTexte}
             >
               Remplir les champs
-            </button>
-          </div>
-        </div>
-
-        <div className="admin-section">
-          <h2>Coller plusieurs articles d&apos;un coup (lot)</h2>
-          <p>
-            Colle plusieurs articles à la suite, chacun au format habituel
-            (Titre / Sous-titre / Résumé court / Catégorie / Signer avec /
-            Contenu), séparés par une ligne de <strong>====</strong>. Ajoute
-            un bloc <strong>**Programmer le**</strong> avec une date au
-            format AAAA-MM-JJ HH:MM pour programmer cet article (sinon il
-            est publié tout de suite). Les images de couverture ne peuvent
-            pas être collées : ajoute-les ensuite une par une si besoin.
-          </p>
-          <div className="admin-form">
-            <textarea
-              value={texteLot}
-              onChange={(e) => setTexteLot(e.target.value)}
-              style={{ minHeight: 220 }}
-              placeholder={
-                "**Titre**\nPremier article\n**Catégorie**\nJe m'informe\n**Programmer le**\n2026-09-20 09:00\n**Contenu**\n...\n\n====\n\n**Titre**\nDeuxième article\n**Catégorie**\nSociété\n**Contenu**\n..."
-              }
-            />
-            {resultatLot && <p className="form-success">{resultatLot}</p>}
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={lotEnCours}
-              onClick={handleCreerLotArticles}
-            >
-              {lotEnCours ? "Création..." : "Créer le lot"}
             </button>
           </div>
         </div>
@@ -473,6 +467,43 @@ export default function AdminBlogs() {
             </button>
           </form>
         </div>
+          </>
+        )}
+
+        {ongletCreation === "lot" && (
+          <div className="admin-section">
+            <h2>Coller plusieurs articles d&apos;un coup (lot)</h2>
+            <p>
+              Colle plusieurs articles à la suite, chacun au format habituel
+              (Titre / Sous-titre / Résumé court / Catégorie / Signer avec /
+              Contenu), séparés par une ligne de <strong>====</strong>.
+              Ajoute un bloc <strong>**Programmer le**</strong> avec une
+              date au format AAAA-MM-JJ HH:MM pour programmer cet article
+              (sinon il est publié tout de suite). Les images de couverture
+              ne peuvent pas être collées : ajoute-les ensuite une par une
+              si besoin.
+            </p>
+            <div className="admin-form">
+              <textarea
+                value={texteLot}
+                onChange={(e) => setTexteLot(e.target.value)}
+                style={{ minHeight: 220 }}
+                placeholder={
+                  "**Titre**\nPremier article\n**Catégorie**\nJe m'informe\n**Programmer le**\n2026-09-20 09:00\n**Contenu**\n...\n\n====\n\n**Titre**\nDeuxième article\n**Catégorie**\nSociété\n**Contenu**\n..."
+                }
+              />
+              {resultatLot && <p className="form-success">{resultatLot}</p>}
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={lotEnCours}
+                onClick={handleCreerLotArticles}
+              >
+                {lotEnCours ? "Création..." : "Créer le lot"}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="admin-section">
           <h2>Articles</h2>

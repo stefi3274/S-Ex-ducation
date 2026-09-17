@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
@@ -99,6 +99,9 @@ function AdminDashboardInner() {
   >([]);
 
   const [posts, setPosts] = useState<Post[]>([]);
+  const [ongletCreation, setOngletCreation] = useState<
+    "unique" | "lot" | null
+  >(null);
 
   const [titreRapide, setTitreRapide] = useState("");
   const [categorieRapide, setCategorieRapide] = useState(CATEGORIES[0].slug);
@@ -140,6 +143,8 @@ function AdminDashboardInner() {
   const [sponsorLien, setSponsorLien] = useState("");
   const [sponsorFile, setSponsorFile] = useState<File | null>(null);
   const [sponsorSaving, setSponsorSaving] = useState(false);
+  const [chargementSlides, setChargementSlides] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
   const [datesProgrammation, setDatesProgrammation] = useState<
     Record<string, string>
   >({});
@@ -377,6 +382,9 @@ function AdminDashboardInner() {
       await loadPosts();
       await loadStats();
       await loadSlides(nouveauPost as Post);
+      setTimeout(() => {
+        previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
     } catch (err) {
       const message = messageErreur(err);
       setErreurRapide(
@@ -463,6 +471,7 @@ function AdminDashboardInner() {
     setSelectedPost(post);
     setSlides({});
     setDrafts({});
+    setChargementSlides(true);
     setSponsorNom(post.sponsor_nom ?? "");
     setSponsorLien(post.sponsor_lien ?? "");
     setSponsorFile(null);
@@ -492,6 +501,7 @@ function AdminDashboardInner() {
 
     setSlides(parPosition);
     setDrafts(nouveauxDrafts);
+    setChargementSlides(false);
   }
 
   function updateDraft(position: number, patch: Partial<SlideDraft>) {
@@ -796,6 +806,29 @@ function AdminDashboardInner() {
           </div>
         </div>
 
+        <div className="row-actions" style={{ marginTop: 24 }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() =>
+              setOngletCreation((prev) => (prev === "unique" ? null : "unique"))
+            }
+          >
+            {ongletCreation === "unique" ? "Fermer" : "Créer un carousel"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              setOngletCreation((prev) => (prev === "lot" ? null : "lot"))
+            }
+          >
+            {ongletCreation === "lot" ? "Fermer" : "Coller plusieurs carousels"}
+          </button>
+        </div>
+
+        {ongletCreation === "unique" && (
+          <>
         <div className="carousel-rapide">
           <h2>Carousel rapide</h2>
           <p>Colle un texte, tu as un carousel. Le plus simple possible.</p>
@@ -899,39 +932,6 @@ function AdminDashboardInner() {
           </form>
         </div>
 
-        <div className="carousel-rapide">
-          <h2>Coller plusieurs carousels d&apos;un coup (lot)</h2>
-          <p>
-            Pour des semaines de contenu en une fois. Format par carousel :{" "}
-            <strong>**Titre**</strong>, <strong>**Catégorie**</strong>,{" "}
-            <strong>**Programmer le**</strong> (AAAA-MM-JJ HH:MM, optionnel),
-            puis <strong>**Slides**</strong> avec les blocs séparés par ---.
-            Sépare chaque carousel du suivant par une ligne de{" "}
-            <strong>====</strong>.
-          </p>
-          <div className="admin-form">
-            <textarea
-              value={texteLotCarousels}
-              onChange={(e) => setTexteLotCarousels(e.target.value)}
-              style={{ minHeight: 220 }}
-              placeholder={
-                "**Titre**\nPremier carousel\n**Catégorie**\nSociété\n**Programmer le**\n2026-09-20 09:00\n**Slides**\nSlide 1 titre\nSlide 1 texte\n---\nSlide 2 titre\nSlide 2 texte\n\n====\n\n**Titre**\nDeuxième carousel\n**Catégorie**\nJe m'informe\n**Slides**\nSlide 1 titre\nSlide 1 texte"
-              }
-            />
-            {resultatLotCarousels && (
-              <p className="form-success">{resultatLotCarousels}</p>
-            )}
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={lotCarouselsEnCours}
-              onClick={handleCreerLotCarousels}
-            >
-              {lotCarouselsEnCours ? "Création..." : "Créer le lot"}
-            </button>
-          </div>
-        </div>
-
         <div className="admin-section">
           <h2>Nouveau post</h2>
           <form onSubmit={handleCreatePost} className="admin-form">
@@ -1024,6 +1024,43 @@ function AdminDashboardInner() {
             </button>
           </form>
         </div>
+          </>
+        )}
+
+        {ongletCreation === "lot" && (
+          <div className="carousel-rapide">
+            <h2>Coller plusieurs carousels d&apos;un coup (lot)</h2>
+            <p>
+              Pour des semaines de contenu en une fois. Format par carousel :{" "}
+              <strong>**Titre**</strong>, <strong>**Catégorie**</strong>,{" "}
+              <strong>**Programmer le**</strong> (AAAA-MM-JJ HH:MM,
+              optionnel), puis <strong>**Slides**</strong> avec les blocs
+              séparés par ---. Sépare chaque carousel du suivant par une
+              ligne de <strong>====</strong>.
+            </p>
+            <div className="admin-form">
+              <textarea
+                value={texteLotCarousels}
+                onChange={(e) => setTexteLotCarousels(e.target.value)}
+                style={{ minHeight: 220 }}
+                placeholder={
+                  "**Titre**\nPremier carousel\n**Catégorie**\nSociété\n**Programmer le**\n2026-09-20 09:00\n**Slides**\nSlide 1 titre\nSlide 1 texte\n---\nSlide 2 titre\nSlide 2 texte\n\n====\n\n**Titre**\nDeuxième carousel\n**Catégorie**\nJe m'informe\n**Slides**\nSlide 1 titre\nSlide 1 texte"
+                }
+              />
+              {resultatLotCarousels && (
+                <p className="form-success">{resultatLotCarousels}</p>
+              )}
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={lotCarouselsEnCours}
+                onClick={handleCreerLotCarousels}
+              >
+                {lotCarouselsEnCours ? "Création..." : "Créer le lot"}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="admin-section">
           <h2>Tous les posts</h2>
@@ -1127,8 +1164,13 @@ function AdminDashboardInner() {
         </div>
 
         {selectedPost && (
-          <div className="admin-section">
+          <div className="admin-section" ref={previewRef}>
             <h2>Slides — {selectedPost.titre}</h2>
+
+            {chargementSlides ? (
+              <p>Chargement des slides...</p>
+            ) : (
+              <>
             <p>
               {selectedPost.type === "post"
                 ? "Post simple : un seul slide."
@@ -1387,6 +1429,8 @@ function AdminDashboardInner() {
                 </button>
               </div>
             </div>
+              </>
+            )}
           </div>
         )}
 
